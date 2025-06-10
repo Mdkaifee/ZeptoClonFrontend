@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_application_1/cart.dart';
+import 'your_orders_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String token;
@@ -342,44 +343,6 @@ void incrementQuantity(String productId) {
 void storeCartItemId(String productId, String cartItemId) {
   productIdToCartItemId[productId] = cartItemId;
 }
-// void decrementQuantity(String productId, String cartItemId) {
-//   int currentQuantity = productQuantities[productId] ?? 0;
-
-//   if (currentQuantity > 0) {
-//     int newQuantity = currentQuantity - 1;
-//     setState(() {
-//       productQuantities[productId] = newQuantity;
-//     });
-
-//     print("Decrementing quantity for Cart Item ID: $cartItemId");
-//     updateCart(cartItemId, -1, currentQuantity, productId); // passing productId here
-//   } else {
-//     print("Quantity already at zero, cannot decrement further.");
-//   }
-// }
-// Future<void> decrementQuantity(String productId, String cartItemId) async {
-//   int currentQuantity = productQuantities[productId] ?? 0;
-
-//   if (currentQuantity > 0) {
-//     int newQuantity = currentQuantity - 1;
-
-//     setState(() {
-//       productQuantities[productId] = newQuantity;
-//     });
-
-//     print("Decrementing quantity for Cart Item ID: $cartItemId");
-
-//     await updateCart(cartItemId, -1, currentQuantity, productId); // Await the update
-
-//     // ✅ If the item was removed (i.e., no longer exists in the map), update the UI
-//     if (!productQuantities.containsKey(productId)) {
-//       setState(() {});
-//     }
-//   } else {
-//     print("Quantity already at zero, cannot decrement further.");
-//   }
-// }
-
 Future<void> decrementQuantity(String productId, String cartItemId) async {
   int currentQuantity = productQuantities[productId] ?? 0;
 
@@ -495,63 +458,6 @@ actions: [
   itemBuilder: (context, index) {
     String productId = products[index]['_id'];
     int currentQuantity = productQuantities[productId] ?? 0;
-
-    // return Card(
-    //   elevation: 5,
-    //   child: Column(
-    //     crossAxisAlignment: CrossAxisAlignment.center,
-    //     children: [
-    //       Image.network(
-    //         products[index]['image'],
-    //         height: 120,
-    //         width: double.infinity,
-    //         fit: BoxFit.cover,
-    //       ),
-    //       Padding(
-    //         padding: EdgeInsets.all(8),
-    //         child: Column(
-    //           children: [
-    //             Text(products[index]['name']),
-    //             Text('Rs.${products[index]['price']}'),
-    //                           currentQuantity > 0
-    //               ? Row(
-    //                 mainAxisAlignment: MainAxisAlignment.center,
-    //                 children: [
-    //                   IconButton(
-    //                     icon: Icon(Icons.remove),
-    //                     onPressed: () {
-    //                       String cartItemId = productIdToCartItemId[productId] ?? '';
-    //                       if (cartItemId.isNotEmpty) {
-    //                         decrementQuantity(productId, cartItemId);
-    //                       } else {
-    //                         print("Cart item ID not found for product $productId");
-    //                       }
-    //                     },
-    //                   ),
-    //                   Text('$currentQuantity'),
-    //                   IconButton(
-    //                     icon: Icon(Icons.add),
-    //                     onPressed: () => incrementQuantity(productId),
-    //                   ),
-    //                 ],
-    //               )
-    //       : ElevatedButton(
-    //           onPressed: _user != null && _user['id'] != null
-    //               ? () {
-    //                   incrementQuantity(productId);
-    //                   int quantity = productQuantities[productId] ?? 0;
-    //                   addToCart(_user['id'], productId, quantity);
-    //                 }
-    //               : null,
-    //           child: Text('Add to Cart'),
-    //         ),
-
-    //           ],
-    //         ),
-    //       )
-    //     ],
-    //   ),
-    // );
     return Card(
   elevation: 5,
   child: Column(
@@ -650,45 +556,65 @@ actions: [
                 ),
                 SizedBox(height: 20),
                 ElevatedButton.icon(
+  icon: Icon(Icons.list),
+  label: Text("View Orders"),
+  onPressed: () {
+    // Navigate to YourOrdersScreen, no need to pass orders data anymore
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const YourOrdersScreen(),  // No need to pass data
+      ),
+    );
+  },
+  style: ElevatedButton.styleFrom(
+    foregroundColor: Colors.white,
+    backgroundColor: Colors.green,
+  ),
+),
+
+
+                SizedBox(height: 20),
+                ElevatedButton.icon(
                   icon: Icon(Icons.logout),
                   label: Text("Logout"),
                   onPressed: () {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text("Logout"),
-        content: Text("Are you sure you want to logout?"),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text("No"),
-          ),
-          TextButton(
-            onPressed: () async {
-              await _logoutUser();
-              Navigator.of(context).pop();
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/loginPage', // You might need to navigate to the splash screen or login page directly
-                (Route<dynamic> route) => false,
-              );
-              Fluttertoast.showToast(
-                msg: "User logged out successfully",
-                toastLength: Toast.LENGTH_SHORT,
-                gravity: ToastGravity.BOTTOM,
-                timeInSecForIosWeb: 1,
-                backgroundColor: Colors.red,
-                textColor: Colors.white,
-                fontSize: 16.0,
-              );
-            },
-            child: Text("Yes"),
-          ),
-        ],
-      );
-    },
-  );
-},
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: Text("Logout"),
+                        content: Text("Are you sure you want to logout?"),
+                        actions: <Widget>[
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: Text("No"),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              await _logoutUser();
+                              Navigator.of(context).pop();
+                              Navigator.of(context).pushNamedAndRemoveUntil(
+                                '/loginPage', // You might need to navigate to the splash screen or login page directly
+                                (Route<dynamic> route) => false,
+                              );
+                              Fluttertoast.showToast(
+                                msg: "User logged out successfully",
+                                toastLength: Toast.LENGTH_SHORT,
+                                gravity: ToastGravity.BOTTOM,
+                                timeInSecForIosWeb: 1,
+                                backgroundColor: Colors.red,
+                                textColor: Colors.white,
+                                fontSize: 16.0,
+                              );
+                            },
+                            child: Text("Yes"),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
 
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,

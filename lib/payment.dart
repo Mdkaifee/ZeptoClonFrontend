@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'addupi.dart';
+import 'paywith_cash.dart';
+import 'orders.dart';
 class PaymentOptionScreen extends StatefulWidget {
   final List<dynamic> cartItems;
   final int totalItems;
@@ -36,7 +38,12 @@ Widget _buildUpiAppIcon(String id, String imageUrl) {
         color: isSelected ? Colors.grey.shade300 : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Image.network(imageUrl, height: 30),
+       child: Image.network(
+        imageUrl,
+        height: 35, // ⬅️ Reduced height
+        width: 65,  // ⬅️ Set width explicitly
+        fit: BoxFit.contain,
+      ),
     ),
   );
 }
@@ -131,28 +138,37 @@ Widget _buildUpiAppIcon(String id, String imageUrl) {
                     },
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildUpiAppIcon(
-                        'gpay',
-                        'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/512px-Google_Pay_Logo.svg.png?20221017164555',
-                      ),
-                      _buildUpiAppIcon(
-                        'phonepe',
-                        'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/PhonePe_Logo.svg/230px-PhonePe_Logo.svg.png?20210407195407',
-                      ),
-                      _buildUpiAppIcon(
-                        'paytm',
-                        'https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/60px-Paytm_Logo_%28standalone%29.svg.png?20200830180423',
-                      ),
-                      _buildUpiAppIcon(
-                        'bajaj',
-                        'https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Bajaj_Finserv_Logo.svg/512px-Bajaj_Finserv_Logo.svg.png?20211130072409',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
+SizedBox(
+  height: 50, // or adjust based on your icon size
+  child: SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Row(
+      children: [
+        _buildUpiAppIcon(
+          'gpay',
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/512px-Google_Pay_Logo.svg.png?20221017164555',
+        ),
+        SizedBox(width: 12),
+        _buildUpiAppIcon(
+          'phonepe',
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/PhonePe_Logo.svg/230px-PhonePe_Logo.svg.png?20210407195407',
+        ),
+        SizedBox(width: 12),
+        _buildUpiAppIcon(
+          'paytm',
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/60px-Paytm_Logo_%28standalone%29.svg.png?20200830180423',
+        ),
+        SizedBox(width: 12),
+        _buildUpiAppIcon(
+          'bajaj',
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Bajaj_Finserv_Logo.svg/512px-Bajaj_Finserv_Logo.svg.png?20211130072409',
+        ),
+      ],
+    ),
+  ),
+),
+const SizedBox(height: 10),
+
                  TextButton.icon(
   onPressed: () {
     Navigator.push(
@@ -206,41 +222,49 @@ Widget _buildUpiAppIcon(String id, String imageUrl) {
 
             // ------------------- Proceed Button -------------------
             ElevatedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      _selectedPaymentMethod == 'upi'
-                          ? "Proceeding with UPI Payment..."
-                          : "Cash on Delivery selected",
-                    ),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade700,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: Text.rich(
-                TextSpan(
-                  children: [
-                    const TextSpan(
-                      text: "Proceed to Pay  ",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    TextSpan(
-                      text: "₹${widget.grandTotal.toStringAsFixed(2)}",
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+  onPressed: () {
+    if (_selectedPaymentMethod == 'upi') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Proceeding with UPI Payment...")),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PayWithCashScreen(
+            cartItems: widget.cartItems,  // Pass cartItems here
+            totalItems: widget.totalItems,  // Pass totalItems here
+            grandTotal: widget.grandTotal,  // Pass grandTotal here
+          ),
+        ),
+      );
+    }
+  },
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.green.shade700,
+    foregroundColor: Colors.white,
+    minimumSize: const Size(double.infinity, 50),
+  ),
+  child: Text.rich(
+    TextSpan(
+      children: [
+        const TextSpan(
+          text: "Proceed to Pay  ",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        TextSpan(
+          text: "₹${widget.grandTotal.toStringAsFixed(2)}",
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ],
+    ),
+  ),
+)
+
           ],
         ),
       ),

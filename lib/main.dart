@@ -103,24 +103,42 @@ class _LoginPageState extends State<LoginPage> {
 if (response.statusCode == 200) {
   var data = json.decode(response.body);
   var user = data['user']; // Ensure this key actually exists in response
+  
+  // Check if user contains 'userId'
+  if (user != null && user['id'] != null) {
+    print('User ID: ${user['id']}'); // Debugging log to see if the userId is present
 
-  // Save login state, token, and user data to shared preferences
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('isLoggedIn', true);
-  await prefs.setString('userToken', data['token']);
-  // await prefs.setString('userData', json.encode(user)); // Storing user data as JSON string
-await prefs.setString('userData', json.encode(data['user']));
-  Fluttertoast.showToast(
-    msg: "Login Successful!",
-    backgroundColor: Colors.green,
-  );
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(
-      builder: (context) => HomeScreen(token: data['token'], user: user),
-    ),
-  );
+    // Save login state, token, and user data to shared preferences
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userId', user['id']);
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setString('userToken', data['token']);
+    await prefs.setString('userData', json.encode(user)); // Storing user data as JSON string
+
+    // Log the saved userId
+    String? savedUserId = prefs.getString('userId');
+    print('Saved User ID: $savedUserId'); // Log to check if the userId is saved correctly
+
+    Fluttertoast.showToast(
+      msg: "Login Successful!",
+      backgroundColor: Colors.green,
+    );
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HomeScreen(token: data['token'], user: user),
+      ),
+    );
+  } else {
+    print("User ID is missing in the response!");
+    Fluttertoast.showToast(
+      msg: "Failed to login: User ID is missing.",
+      backgroundColor: Colors.red,
+    );
+  }
 }
+
 
 else {
   Fluttertoast.showToast(
