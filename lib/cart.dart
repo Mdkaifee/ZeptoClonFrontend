@@ -1,102 +1,3 @@
-// import 'package:flutter/material.dart';
-
-// class CartScreen extends StatelessWidget {
-//   final List<dynamic> cartItems;
-//  final VoidCallback onCartChanged; 
-//   const CartScreen({Key? key, required this.cartItems, required this.onCartChanged,}) : super(key: key);
-
-//   @override
-// Widget build(BuildContext context) {
-//   // Compute totals before the build
-//   double grandTotal = 0.0;
-//   int totalItems = 0;
-
-//   for (var item in cartItems) {
-//     final int quantityInCart = item['quantity'];
-//     final double price = (item['product']['price'] as num).toDouble();
-//     grandTotal += price * quantityInCart;
-//     totalItems += quantityInCart;
-//   }
-
-//   return Scaffold(
-//     appBar: AppBar(
-//       title: const Text("Your Cart"),
-//     ),
-//     body: cartItems.isEmpty
-//         ? const Center(
-//             child: Text(
-//               "🛒 No items in your cart",
-//               style: TextStyle(
-//                 fontSize: 18,
-//                 fontWeight: FontWeight.bold,
-//                 color: Colors.grey,
-//               ),
-//             ),
-//           )
-//         : Padding(
-//             padding: const EdgeInsets.all(16.0),
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 const Text(
-//                   "--- Cart Summary ---",
-//                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-//                 ),
-//                 const SizedBox(height: 10),
-//                 Expanded(
-//                   child: ListView.builder(
-//                     itemCount: cartItems.length,
-//                     itemBuilder: (context, index) {
-//                       final item = cartItems[index];
-//                       final product = item['product'];
-//                       final int quantityInCart = item['quantity'];
-//                       final double price = (product['price'] as num).toDouble();
-//                       final double totalPrice = price * quantityInCart;
-
-//                       return Card(
-//                         margin: const EdgeInsets.symmetric(vertical: 8),
-//                         elevation: 2,
-//                         child: Padding(
-//                           padding: const EdgeInsets.all(12.0),
-//                           child: Column(
-//                             crossAxisAlignment: CrossAxisAlignment.start,
-//                             children: [
-//                               Text(
-//                                 "Product: ${product['name']}",
-//                                 style: const TextStyle(fontWeight: FontWeight.bold),
-//                               ),
-//                               const SizedBox(height: 4),
-//                               Text("Quantity: ${product['quantity']['value']} ${product['quantity']['unit']}"),
-//                               const SizedBox(height: 4),
-//                               Image.network(
-//                                 product['image'],
-//                                 height: 100,
-//                                 width: 100,
-//                                 fit: BoxFit.contain,
-//                               ),
-//                               const SizedBox(height: 4),
-//                               Text("Price per item: \$${price.toStringAsFixed(2)}"),
-//                               Text("Quantity in cart: $quantityInCart"),
-//                               Text("Total price: \$${totalPrice.toStringAsFixed(2)}"),
-//                             ],
-//                           ),
-//                         ),
-//                       );
-//                     },
-//                   ),
-//                 ),
-//                 const Divider(thickness: 1.5),
-//                 Text("Total items in cart: $totalItems",
-//                     style: const TextStyle(fontWeight: FontWeight.bold)),
-//                 Text("Grand total price: \$${grandTotal.toStringAsFixed(2)}",
-//                     style: const TextStyle(fontWeight: FontWeight.bold)),
-//               ],
-//             ),
-//           ),
-//   );
-// }
-
-// }
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -306,15 +207,7 @@ void updateQuantity(int index, int change) async {
     ),
   ],
 ),
-
-                  // const Divider(thickness: 1.5),
-                  // Text("Total items in cart: $totalItems",
-                  //     style:
-                  //         const TextStyle(fontWeight: FontWeight.bold)),
-                  // Text("Grand total price: \$${grandTotal.toStringAsFixed(2)}",
-                  //     style:
-                  //         const TextStyle(fontWeight: FontWeight.bold)),
-                const Divider(thickness: 1.5),
+             const Divider(thickness: 1.5),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -339,31 +232,8 @@ void updateQuantity(int index, int change) async {
                 Container(
   width: 200,
   height: 60,
-  // child: SlideAction(
-  //   onSubmit: () {
-  //     // Your payment logic
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text("Payment Triggered!")),
-  //     );
-  //   },
-  //   text: "Slide to Pay",
-  //   textStyle: const TextStyle(
-  //     color: Colors.white,
-  //     fontSize: 18,
-  //     fontWeight: FontWeight.bold,
-  //   ),
-  //   outerColor: Colors.green.shade700,
-  //   innerColor: Colors.white,
-  //   elevation: 4,
-  //   sliderButtonIcon: const Icon(Icons.payment, color: Colors.green, size: 28),
-  //   borderRadius: 20,
-  // ),
  child: SlideAction(
   onSubmit: () {
-    // Handle payment logic here
-    // ScaffoldMessenger.of(context).showSnackBar(
-    //   const SnackBar(content: Text("Payment Successful!")),
-    // );
     Navigator.push(
       context,
       MaterialPageRoute(

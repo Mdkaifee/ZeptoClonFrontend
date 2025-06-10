@@ -61,45 +61,6 @@ class _LoginPageState extends State<LoginPage> {
             'password': _passwordController.text,
           }),
         );
-
-        // if (response.statusCode == 200) {
-        //   var data = json.decode(response.body);
-        //   Fluttertoast.showToast(
-        //     msg: "Login Successful!",
-        //     backgroundColor: Colors.green,
-        //   );
-        //   Navigator.pushReplacement(
-        //     context,
-        //     MaterialPageRoute(
-        //       builder:
-        //           (context) =>
-        //               HomeScreen(token: data['token'], user: data['user']),
-        //     ),
-        //   );
-        // } else {
-        //   Fluttertoast.showToast(
-        //     msg: "Failed to login: ${response.body}",
-        //     backgroundColor: Colors.red,
-        //   );
-        // }
-//         if (response.statusCode == 200) {
-//   var data = json.decode(response.body);
-//   // Save login state and token to shared preferences
-//   final SharedPreferences prefs = await SharedPreferences.getInstance();
-//   await prefs.setBool('isLoggedIn', true);
-//   await prefs.setString('userToken', data['token']);
-
-//   Fluttertoast.showToast(
-//     msg: "Login Successful!",
-//     backgroundColor: Colors.green,
-//   );
-//   Navigator.pushReplacement(
-//     context,
-//     MaterialPageRoute(
-//       builder: (context) => HomeScreen(token: data['token'], user: data['user']),
-//     ),
-//   );
-// } 
 if (response.statusCode == 200) {
   var data = json.decode(response.body);
   var user = data['user']; // Ensure this key actually exists in response

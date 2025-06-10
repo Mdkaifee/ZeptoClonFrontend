@@ -119,16 +119,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   return null;
                 },
               ),
-              // TextFormField(
-              //   controller: _mobileController,
-              //   decoration: InputDecoration(labelText: 'Mobile Number'),
-              //   validator: (value) {
-              //     if (value == null || value.isEmpty) {
-              //       return 'Please enter your mobile number';
-              //     }
-              //     return null;
-              //   },
-              // ),
                TextFormField(
                 controller: _mobileController,
                 decoration: InputDecoration(labelText: 'Mobile Number'),
