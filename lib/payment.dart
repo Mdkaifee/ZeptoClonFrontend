@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'addupi.dart';
 import 'paywith_cash.dart';
 import 'orders.dart';
+import 'paywith_razorpay.dart';
 class PaymentOptionScreen extends StatefulWidget {
   final List<dynamic> cartItems;
   final int totalItems;
@@ -19,7 +20,7 @@ class PaymentOptionScreen extends StatefulWidget {
 }
 
 class _PaymentOptionScreenState extends State<PaymentOptionScreen> {
-  String _selectedPaymentMethod = 'upi'; // 'upi' or 'cod'
+  String _selectedPaymentMethod ='razorpay'; // 'upi' or 'cod'
   String? _selectedUpiApp; // 👈 Move this inside the class
 
 Widget _buildUpiAppIcon(String id, String imageUrl) {
@@ -102,93 +103,123 @@ Widget _buildUpiAppIcon(String id, String imageUrl) {
             Text("Grand Total: ₹${widget.grandTotal.toStringAsFixed(2)}",
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
-
-            // ------------------- Pay by UPI Section -------------------
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Pay by UPI",
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    leading: const Icon(Icons.payment),
-                    title: const Text("Pay by any UPI app"),
-                    subtitle: const Text("Use any UPI app on your phone to pay"),
-                    trailing: Radio<String>(
-                      value: 'upi',
-                      groupValue: _selectedPaymentMethod,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedPaymentMethod = value!;
-                        });
-                      },
-                    ),
-                    onTap: () {
-                      setState(() {
-                        _selectedPaymentMethod = 'upi';
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 10),
-SizedBox(
-  height: 50, // or adjust based on your icon size
-  child: SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: Row(
-      children: [
-        _buildUpiAppIcon(
-          'gpay',
-          'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/512px-Google_Pay_Logo.svg.png?20221017164555',
-        ),
-        SizedBox(width: 12),
-        _buildUpiAppIcon(
-          'phonepe',
-          'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/PhonePe_Logo.svg/230px-PhonePe_Logo.svg.png?20210407195407',
-        ),
-        SizedBox(width: 12),
-        _buildUpiAppIcon(
-          'paytm',
-          'https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/60px-Paytm_Logo_%28standalone%29.svg.png?20200830180423',
-        ),
-        SizedBox(width: 12),
-        _buildUpiAppIcon(
-          'bajaj',
-          'https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Bajaj_Finserv_Logo.svg/512px-Bajaj_Finserv_Logo.svg.png?20211130072409',
-        ),
-      ],
+ // ------------------- Pay by Razorpay Section -------------------
+       Container(
+  decoration: BoxDecoration(
+    color: Colors.grey.shade100,
+    borderRadius: BorderRadius.circular(12),
+  ),
+  child: ListTile(
+    contentPadding: EdgeInsets.zero,
+    dense: true,
+    leading: const Icon(Icons.payment),
+    title: const Text("Pay Online (Razorpay)"),
+    trailing: Radio<String>(
+      value: 'razorpay',
+      groupValue: _selectedPaymentMethod,
+      onChanged: (value) {
+        setState(() {
+          _selectedPaymentMethod = value!;
+        });
+      },
     ),
+    onTap: () {
+      setState(() {
+        _selectedPaymentMethod = 'razorpay';  // Set Razorpay as selected
+      });
+    },
   ),
 ),
-const SizedBox(height: 10),
 
-                 TextButton.icon(
-  onPressed: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddUpiScreen(
-          grandTotal: widget.grandTotal,
-          totalItems: widget.totalItems,
-        ),
-      ),
-    );
-  },
-  icon: const Icon(Icons.add),
-  label: const Text(" Add new UPI ID"),
-),
-                ],
-              ),
-            ),
 
-            const SizedBox(height: 20),
+const SizedBox(height: 20),
+
+            // ------------------- Pay by UPI Section -------------------
+            // Container(
+            //   decoration: BoxDecoration(
+            //     color: Colors.grey.shade100,
+            //     borderRadius: BorderRadius.circular(12),
+            //   ),
+            //   padding: const EdgeInsets.all(12),
+            //   child: Column(
+            //     crossAxisAlignment: CrossAxisAlignment.start,
+            //     children: [
+            //       const Text("Pay by UPI",
+            //           style: TextStyle(
+            //               fontSize: 16, fontWeight: FontWeight.bold)),
+            //       ListTile(
+            //         contentPadding: EdgeInsets.zero,
+            //         dense: true,
+            //         leading: const Icon(Icons.payment),
+            //         title: const Text("Pay by any UPI app"),
+            //         subtitle: const Text("Use any UPI app on your phone to pay"),
+            //         trailing: Radio<String>(
+            //           value: 'upi',
+            //           groupValue: _selectedPaymentMethod,
+            //           onChanged: (value) {
+            //             setState(() {
+            //               _selectedPaymentMethod = value!;
+            //             });
+            //           },
+            //         ),
+            //         onTap: () {
+            //           setState(() {
+            //             _selectedPaymentMethod = 'upi';
+            //           });
+            //         },
+            //       ),
+            //                     const SizedBox(height: 10),
+            //   SizedBox(
+            //     height: 50, // or adjust based on your icon size
+            //     child: SingleChildScrollView(
+            //       scrollDirection: Axis.horizontal,
+            //       child: Row(
+            //         children: [
+            //           _buildUpiAppIcon(
+            //             'gpay',
+            //             'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/512px-Google_Pay_Logo.svg.png?20221017164555',
+            //           ),
+            //           SizedBox(width: 12),
+            //           _buildUpiAppIcon(
+            //             'phonepe',
+            //             'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/PhonePe_Logo.svg/230px-PhonePe_Logo.svg.png?20210407195407',
+            //           ),
+            //           SizedBox(width: 12),
+            //           _buildUpiAppIcon(
+            //             'paytm',
+            //             'https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/60px-Paytm_Logo_%28standalone%29.svg.png?20200830180423',
+            //           ),
+            //           SizedBox(width: 12),
+            //           _buildUpiAppIcon(
+            //             'bajaj',
+            //             'https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Bajaj_Finserv_Logo.svg/512px-Bajaj_Finserv_Logo.svg.png?20211130072409',
+            //           ),
+            //         ],
+            //       ),
+            //     ),
+            //   ),
+            //       const SizedBox(height: 10),
+
+            //      TextButton.icon(
+            //         onPressed: () {
+            //           Navigator.push(
+            //             context,
+            //             MaterialPageRoute(
+            //               builder: (context) => AddUpiScreen(
+            //                 grandTotal: widget.grandTotal,
+            //                 totalItems: widget.totalItems,
+            //               ),
+            //             ),
+            //           );
+            //         },
+            //         icon: const Icon(Icons.add),
+            //         label: const Text(" Add new UPI ID"),
+            //       ),
+            //                       ],
+            //                     ),
+            //                   ),
+
+            // const SizedBox(height: 20),
 
             // ------------------- Cash on Delivery Section -------------------
             Container(
@@ -221,13 +252,31 @@ const SizedBox(height: 10),
             const SizedBox(height: 20),
 
             // ------------------- Proceed Button -------------------
-            ElevatedButton(
+          ElevatedButton(
   onPressed: () {
-    if (_selectedPaymentMethod == 'upi') {
+    if (_selectedPaymentMethod == null || _selectedPaymentMethod!.isEmpty) {
+      // If no payment method is selected, show a message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select a payment method to proceed")),
+      );
+    } else if (_selectedPaymentMethod == 'upi') {
+      // Only proceed with UPI payment if UPI is selected
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Proceeding with UPI Payment...")),
       );
-    } else {
+    } else if (_selectedPaymentMethod == 'razorpay') {
+      // Navigate to PayWithRazorpayScreen when Razorpay is selected
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PayWithRazorpayScreen(
+            grandTotal: widget.grandTotal,  // Passing grandTotal
+            totalItems: widget.totalItems,  // Passing totalItems
+          ),
+        ),
+      );
+    } else if (_selectedPaymentMethod == 'cod') {
+      // Navigate to PayWithCashScreen for COD
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -263,7 +312,10 @@ const SizedBox(height: 10),
       ],
     ),
   ),
-)
+  
+),
+
+const SizedBox(height: 30),
 
           ],
         ),

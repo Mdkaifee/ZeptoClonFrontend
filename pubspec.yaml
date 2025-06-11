@@ -15,6 +15,7 @@ dependencies:
   fluttertoast: ^8.0.8
   intl: ^0.17.0 
   logger: ^1.1.0
+  razorpay_flutter: ^1.4.0
   shared_preferences: ^2.5.2
   slide_to_act: ^2.0.0
 dev_dependencies:
