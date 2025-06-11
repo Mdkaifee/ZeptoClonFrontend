@@ -274,31 +274,7 @@ void incrementQuantity(String productId) {
 void storeCartItemId(String productId, String cartItemId) {
   productIdToCartItemId[productId] = cartItemId;
 }
-// Future<void> decrementQuantity(String productId, String cartItemId) async {
-//   int currentQuantity = productQuantities[productId] ?? 0;
 
-//   if (currentQuantity > 0) {
-//     int newQuantity = currentQuantity - 1;
-
-//     // 👇 Only update state temporarily
-//     if (newQuantity == 0) {
-//       setState(() {
-//         productQuantities.remove(productId);  // ❗ REMOVE key entirely
-//         productIdToCartItemId.remove(productId);
-//       });
-//     } else {
-//       setState(() {
-//         productQuantities[productId] = newQuantity;
-//       });
-//     }
-
-//     print("Decrementing quantity for Cart Item ID: $cartItemId");
-
-//     await updateCart(cartItemId, -1, currentQuantity, productId);
-//   } else {
-//     print("Quantity already at zero, cannot decrement further.");
-//   }
-// }
 Future<void> decrementQuantity(String productId, String cartItemId) async {
   int currentQuantity = productQuantities[productId] ?? 0;
 
@@ -309,49 +285,52 @@ Future<void> decrementQuantity(String productId, String cartItemId) async {
     print("Attempting to decrement cart item: $cartItemId");
     print("Current Quantity: $currentQuantity, New Quantity: $newQuantity");
 
-    // Remove the item if quantity is zero
-    if (newQuantity == 0) {
-      print("Item quantity is zero. Proceeding to remove from cart.");
-
-      setState(() {
+    setState(() {
+      if (newQuantity == 0) {
+        // If quantity becomes zero, remove the item from the UI
         productQuantities.remove(productId);  // Remove the key for the product
-        productIdToCartItemId.remove(productId);
-      });
-
-      // Call API to remove the item from the cart in the backend
-      var url = Uri.parse('http://192.168.0.129:5000/api/cart/remove/$cartItemId'); // Ensure the URL is correct
-      var response = await http.delete(url); // Use DELETE method if you're deleting the cart item
-
-      if (response.statusCode == 200) {
-        Fluttertoast.showToast(
-          msg: "Item removed from cart successfully",
-          backgroundColor: Colors.green,
-          textColor: Colors.white,
-          fontSize: 16.0,
-        );
-        // Reload the cart after deletion
-        await _fetchCartItems();
+        productIdToCartItemId.remove(productId);  // Also remove the cartItemId
       } else {
-        Fluttertoast.showToast(
-          msg: "Failed to remove item from cart",
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
-          fontSize: 16.0,
-        );
-      }
-    } else {
-      setState(() {
         productQuantities[productId] = newQuantity;  // Decrement quantity in UI
-      });
+      }
+    });
 
-      // Call API to update the cart quantity
-      await updateCart(cartItemId, -1, currentQuantity, productId);
+    // Call API to update the cart quantity (decrease by 1)
+    var url = Uri.parse('http://192.168.0.129:5000/api/cart/update');
+    var response = await http.put(url, 
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'cartItemId': cartItemId,
+        'quantityChange': -1,  // Decrease quantity by 1
+      })
+    );
+
+    if (response.statusCode == 200) {
+      var responseBody = jsonDecode(response.body);
+      Fluttertoast.showToast(
+        msg: responseBody['message'],
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+        fontSize: 16.0,
+      );
+      
+      // Reload cart after item removal or quantity update
+      await _fetchCartItems();
+    } else {
+      Fluttertoast.showToast(
+        msg: "Failed to update cart",
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+        fontSize: 16.0,
+      );
     }
   } else {
     print("Quantity already at zero, cannot decrement further.");
   }
 }
-
 int _getTotalItems() {
   int total = 0;
   for (var item in _cartItems) {
@@ -467,25 +446,25 @@ actions: [
 
                 return currentQuantity > 0
                     ? Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.remove),
-                            onPressed: () {
-                              String cartItemId =
-                                  productIdToCartItemId[productId] ?? '';
-                              if (cartItemId.isNotEmpty) {
-                                decrementQuantity(productId, cartItemId);
-                              }
-                            },
-                          ),
-                          Text('$currentQuantity'),
-                          IconButton(
-                            icon: Icon(Icons.add),
-                            onPressed: () => incrementQuantity(productId),
-                          ),
-                        ],
-                      )
+  mainAxisAlignment: MainAxisAlignment.center,
+  children: [
+    IconButton(
+      icon: Icon(Icons.remove),
+      onPressed: () {
+        String cartItemId = productIdToCartItemId[productId] ?? '';
+        if (cartItemId.isNotEmpty) {
+          decrementQuantity(productId, cartItemId);
+        }
+      },
+    ),
+    Text('$currentQuantity'),
+    IconButton(
+      icon: Icon(Icons.add),
+      onPressed: () => incrementQuantity(productId),
+    ),
+  ],
+)
+
                     : ElevatedButton(
                         onPressed: _user['id'] != null
                             ? () {
