@@ -244,29 +244,30 @@ void updateQuantity(int index, int change) async {
         ),
       ),
     );
-  },
-  text: "         Slide to Pay",
-  textStyle: const TextStyle(
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: FontWeight.w600,
-  ),
-  outerColor: Colors.green.shade700,
-  innerColor: Colors.white,
-  elevation: 3,
-  sliderButtonIcon: const Icon(
-    Icons.payment,
-    size: 20, // 🔽 reduced size to prevent covering text
-    color: Colors.green,
-  ),
-  sliderRotate: false, // Prevents unnecessary icon rotation
-  borderRadius: 16,
-  height: 56,
-  alignment: Alignment.centerRight, // Optional: aligns the button nicely
-),
+          },
+          text: "         Slide to Pay",
+          textStyle: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+          outerColor: Colors.green.shade700,
+          innerColor: Colors.white,
+          elevation: 3,
+          sliderButtonIcon: const Icon(
+            Icons.payment,
+            size: 20, // 🔽 reduced size to prevent covering text
+            color: Colors.green,
+          ),
+            sliderRotate: false, // Prevents unnecessary icon rotation
+          borderRadius: 16,
+          height: 56,
+          alignment: Alignment.centerRight, // Optional: aligns the button nicely
+        ),
 
-),
-]),
+        ),
+        ]),
+        SizedBox(height: 35),
                 ],
               ),
             ),

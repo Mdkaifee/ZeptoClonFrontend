@@ -10,8 +10,8 @@ import 'your_orders_screen.dart';
 class HomeScreen extends StatefulWidget {
   final String token;
   final Map user;
-
-  const HomeScreen({super.key, required this.token, required this.user});
+  // final bool showBackButton;
+  const HomeScreen({super.key, required this.token, required this.user,});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -342,54 +342,103 @@ int _getTotalItems() {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_appBarTitle),
-actions: [
-  Stack(
-    children: [
-      IconButton(
-        icon: const Icon(Icons.shopping_cart),
-        onPressed: () async {
-          await _fetchCartItems();
+//       appBar: AppBar(
+//         title: Text(_appBarTitle),
+//        leading: null,
+// actions: [
+//   Stack(
+//     children: [
+//       IconButton(
+//         icon: const Icon(Icons.shopping_cart),
+//         onPressed: () async {
+//           await _fetchCartItems();
 
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CartScreen(cartItems: _cartItems,onCartChanged: _fetchCartItems,),
-            ),
-          );
+//           await Navigator.push(
+//             context,
+//             MaterialPageRoute(
+//               builder: (context) => CartScreen(cartItems: _cartItems,onCartChanged: _fetchCartItems,),
+//             ),
+//           );
 
-          await _fetchCartItems();
-           setState(() {});
-        },
-      ),
-      if (_cartItems.isNotEmpty)
-        Positioned(
-          right: 6,
-          top: 0,
-          child: Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.red,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            constraints: const BoxConstraints(
-              minWidth: 20,
-              minHeight: 20,
-            ),
-            child: Text(
-              _getTotalItems().toString(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
+//           await _fetchCartItems();
+//            setState(() {});
+//         },
+//       ),
+//       if (_cartItems.isNotEmpty)
+//         Positioned(
+//           right: 6,
+//           top: 0,
+//           child: Container(
+//             padding: const EdgeInsets.all(4),
+//             decoration: BoxDecoration(
+//               color: Colors.red,
+//               borderRadius: BorderRadius.circular(10),
+//             ),
+//             constraints: const BoxConstraints(
+//               minWidth: 20,
+//               minHeight: 20,
+//             ),
+//             child: Text(
+//               _getTotalItems().toString(),
+//               style: const TextStyle(
+//                 color: Colors.white,
+//                 fontSize: 12,
+//               ),
+//               textAlign: TextAlign.center,
+//             ),
+//           ),
+//         )
+//     ],
+//   )
+// ],
+appBar: AppBar(
+  title: Text(_appBarTitle),
+  leading: null,  // Prevent the back button
+  actions: [
+    Stack(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.shopping_cart),
+          onPressed: () async {
+            await _fetchCartItems();
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CartScreen(cartItems: _cartItems, onCartChanged: _fetchCartItems),
               ),
-              textAlign: TextAlign.center,
+            );
+            await _fetchCartItems();
+            setState(() {});
+          },
+        ),
+        if (_cartItems.isNotEmpty)
+          Positioned(
+            right: 6,
+            top: 0,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              constraints: const BoxConstraints(
+                minWidth: 20,
+                minHeight: 20,
+              ),
+              child: Text(
+                _getTotalItems().toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
           ),
-        )
-    ],
-  )
-],
+      ],
+    ),
+  ],
+
 
         bottom: TabBar(
           controller: _tabController,
