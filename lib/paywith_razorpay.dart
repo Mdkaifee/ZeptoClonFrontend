@@ -1,71 +1,3 @@
-// import 'package:flutter/material.dart';
-// import 'package:razorpay_flutter/razorpay_flutter.dart';
-
-// class PayWithRazorpayScreen extends StatelessWidget {
-//   final double grandTotal;
-//   final int totalItems;
-
-//   const PayWithRazorpayScreen({
-//     Key? key,
-//     required this.grandTotal,
-//     required this.totalItems,
-//   }) : super(key: key);
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text("Pay with Razorpay"),
-//       ),
-//       body: Padding(
-//         padding: const EdgeInsets.all(16.0),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             // Title
-//             const Text(
-//               "Review Your Payment",
-//               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-//             ),
-//             const SizedBox(height: 20),
-
-//             // Total Items and Total Amount
-//             Text(
-//               "Items: $totalItems",
-//               style: const TextStyle(fontSize: 18),
-//             ),
-//             const SizedBox(height: 8),
-//             Text(
-//               "Total Amount: ₹${grandTotal.toStringAsFixed(2)}",
-//               style: const TextStyle(fontSize: 18),
-//             ),
-//             const Divider(thickness: 1.5),
-            
-//             // Spacer
-//             const Spacer(),
-
-//             // Pay Now Button
-//                 ElevatedButton(
-//             onPressed: () {
-//               // Add Razorpay payment integration logic here
-//               print("Payment initiated with Razorpay");
-//             },
-//             style: ElevatedButton.styleFrom(
-//               backgroundColor: Colors.green.shade700, // Use backgroundColor instead of primary
-//               minimumSize: const Size(double.infinity, 50),
-//             ),
-//             child: const Text(
-//               "Pay Now",
-//               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-//             ),
-//           )
-
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
 import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -116,28 +48,39 @@ class _PayWithRazorpayScreenState extends State<PayWithRazorpayScreen> {
     // Show an error or cancellation message to the user
   }
 
-  // Function to create Razorpay order
 Future<String> _createOrderOnBackend() async {
+  final url = 'http://192.168.0.129:5000/api/payment/create-order';
+
+  final amountInPaise = (widget.grandTotal * 100).toInt();
+  print("🔵 [Frontend] Initiating backend order creation with amount: $amountInPaise paise");
+
   try {
     var response = await http.post(
-      Uri.parse('http://192.168.0.129:5000/api/payment/create-order'),  // Backend URL
-      headers: {'Content-Type': 'application/json'},  // Set content type as JSON
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'amount': (widget.grandTotal * 100).toString(),  // Send the amount in paise
+        'amount': amountInPaise,
       }),
     );
 
+    print("🟡 [Frontend] Received response status: ${response.statusCode}");
+    print("🟡 [Frontend] Response body: ${response.body}");
+
     if (response.statusCode == 200) {
       var orderData = json.decode(response.body);
-      return orderData['orderId'];  // Extract the orderId from backend response
+      print("🟢 [Frontend] Order ID from backend: ${orderData['orderId']}");
+
+      return orderData['orderId'];
     } else {
+      print("🔴 [Frontend] Failed to create Razorpay order. Response: ${response.body}");
       throw Exception('Failed to create Razorpay order');
     }
   } catch (e) {
-    print("Error creating order on backend: $e");
+    print("🔴 [Frontend] Exception during order creation: $e");
     throw Exception('Failed to create Razorpay order');
   }
 }
+
   // Function to initiate Razorpay payment
   void _initiateRazorpayPayment() async {
     try {
