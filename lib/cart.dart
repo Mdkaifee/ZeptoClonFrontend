@@ -177,35 +177,37 @@ void updateQuantity(int index, int change) async {
       ),
     ),
     InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomeScreen(
-              token: '', // <- Replace with actual token if available
-              user: {},  // <- Replace with actual user map
-            ),
-          ),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.black,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: const Row(
-          children: [
-            Icon(Icons.add, color: Colors.white, size: 18),
-            SizedBox(width: 6),
-            Text(
-              "Add More Items",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-            ),
-          ],
+  onTap: () {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HomeScreen(
+          token: '', // <- Replace with actual token if available
+          user: {},  // <- Replace with actual user map
         ),
       ),
+      (route) => false, // Removes all the previous routes, no back button
+    );
+  },
+  child: Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    decoration: BoxDecoration(
+      color: Colors.black,
+      borderRadius: BorderRadius.circular(10),
     ),
+    child: const Row(
+      children: [
+        Icon(Icons.add, color: Colors.white, size: 18),
+        SizedBox(width: 6),
+        Text(
+          "Add More Items",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+      ],
+    ),
+  ),
+)
+
   ],
 ),
              const Divider(thickness: 1.5),
