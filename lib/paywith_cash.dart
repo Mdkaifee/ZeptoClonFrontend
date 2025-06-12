@@ -34,60 +34,6 @@ Future<String?> _getUserId() async {
   print("Fetched userId: $userId");  // Debugging log
   return userId;
 }
-// Future<void> _createOrder(String userId) async {
-//   var url = Uri.parse('http://192.168.0.129:5000/api/orders');  // API URL to save the order
-
-//   // Prepare order data to be sent to API
-//   var orderData = {
-//     'userId': userId,
-//     'cartItems': widget.cartItems,
-//     'totalAmount': widget.grandTotal,
-//     'paymentStatus': 'COD',  // Cash on delivery
-//     'orderStatus': 'Ordered',
-//   };
-
-//   try {
-//     var response = await http.post(
-//       url,
-//       headers: {'Content-Type': 'application/json'},
-//       body: jsonEncode(orderData),
-//     );
-
-//     if (response.statusCode == 200 || response.statusCode == 201) {
-//       var data = json.decode(response.body);
-//       Fluttertoast.showToast(
-//         msg: "Order placed successfully!",
-//         backgroundColor: Colors.green,
-//       );
-
-//       // Navigate to the Orders screen
-//       Navigator.pushReplacement(
-//         context,
-//         MaterialPageRoute(
-//           builder: (context) => const YourOrdersScreen(),
-//           // builder: (context) => OrdersScreen(
-//           //   cartItems: widget.cartItems,
-//           //   totalItems: widget.totalItems,
-//           //   grandTotal: widget.grandTotal,
-//           //   paymentStatus: 'COD',
-//           //   itemStatus: 'Ordered',
-//           // ),
-//         ),
-//       );
-//     } else {
-//       Fluttertoast.showToast(
-//         msg: "Failed to place the order.",
-//         backgroundColor: Colors.red,
-//       );
-//     }
-//   } catch (e) {
-//     print("Error placing order: $e");
-//     Fluttertoast.showToast(
-//       msg: "Error placing order. Please try again.",
-//       backgroundColor: Colors.red,
-//     );
-//   }
-// }
 Future<void> _createOrder(String userId) async {
   var url = Uri.parse('http://192.168.0.129:5000/api/orders');  // API URL to save the order
 

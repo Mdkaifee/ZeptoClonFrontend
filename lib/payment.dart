@@ -272,6 +272,7 @@ const SizedBox(height: 20),
           builder: (context) => PayWithRazorpayScreen(
             grandTotal: widget.grandTotal,  // Passing grandTotal
             totalItems: widget.totalItems,  // Passing totalItems
+            cartItems: widget.cartItems, 
           ),
         ),
       );

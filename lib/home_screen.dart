@@ -342,55 +342,6 @@ int _getTotalItems() {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-//       appBar: AppBar(
-//         title: Text(_appBarTitle),
-//        leading: null,
-// actions: [
-//   Stack(
-//     children: [
-//       IconButton(
-//         icon: const Icon(Icons.shopping_cart),
-//         onPressed: () async {
-//           await _fetchCartItems();
-
-//           await Navigator.push(
-//             context,
-//             MaterialPageRoute(
-//               builder: (context) => CartScreen(cartItems: _cartItems,onCartChanged: _fetchCartItems,),
-//             ),
-//           );
-
-//           await _fetchCartItems();
-//            setState(() {});
-//         },
-//       ),
-//       if (_cartItems.isNotEmpty)
-//         Positioned(
-//           right: 6,
-//           top: 0,
-//           child: Container(
-//             padding: const EdgeInsets.all(4),
-//             decoration: BoxDecoration(
-//               color: Colors.red,
-//               borderRadius: BorderRadius.circular(10),
-//             ),
-//             constraints: const BoxConstraints(
-//               minWidth: 20,
-//               minHeight: 20,
-//             ),
-//             child: Text(
-//               _getTotalItems().toString(),
-//               style: const TextStyle(
-//                 color: Colors.white,
-//                 fontSize: 12,
-//               ),
-//               textAlign: TextAlign.center,
-//             ),
-//           ),
-//         )
-//     ],
-//   )
-// ],
 appBar: AppBar(
   title: Text(_appBarTitle),
   leading: null,  // Prevent the back button

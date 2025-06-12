@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
+import 'package:shared_preferences/shared_preferences.dart';
+import 'your_orders_screen.dart';  // Import YourOrdersScreen
 class PayWithRazorpayScreen extends StatefulWidget {
   final double grandTotal;
   final int totalItems;
+  final List<dynamic> cartItems;
 
   const PayWithRazorpayScreen({
     Key? key,
     required this.grandTotal,
     required this.totalItems,
+    required this.cartItems,
   }) : super(key: key);
 
   @override
@@ -35,12 +38,82 @@ class _PayWithRazorpayScreenState extends State<PayWithRazorpayScreen> {
     super.dispose();
     _razorpay.clear();  // Clean up Razorpay instance
   }
-
   // Handle payment success
-  void _handlePaymentSuccess(PaymentSuccessResponse response) {
-    print("Payment Success: ${response.paymentId}");
-    // Implement logic to confirm payment and complete the order
+void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+  print("Payment Success: ${response.paymentId}");
+
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId');
+
+  try {
+    // Create order in backend with payment status 'Paid'
+    var orderResponse = await http.post(
+      Uri.parse('http://192.168.0.129:5000/api/orders/'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'userId': userId,
+        'cartItems': widget.cartItems,
+        'totalAmount': widget.grandTotal,
+        'paymentStatus': 'Paid',
+        'orderStatus': 'Ordered'
+      }),
+    );
+
+    if (orderResponse.statusCode == 201) {
+      print("🟢 [Frontend] Order created successfully after payment success");
+
+      // Clear cart items using API
+      await _clearCartItems(userId!);
+ // Show the success dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false, // Prevent dismissing by tapping outside
+        builder: (context) {
+          return const AlertDialog(
+            title: Text("Order Successful!"),
+            content: Text(
+              "Your order will be delivered shortly. Thank you for choosing QuickBasket.",
+            ),
+          );
+        },
+      );
+
+      // Wait for 2 seconds before navigating
+      await Future.delayed(const Duration(seconds: 2));
+
+      // Close dialog explicitly before navigating
+      Navigator.pop(context);
+      // Navigate to YourOrdersScreen after creating order successfully
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const YourOrdersScreen(isFromPayWithRazorpay: true), 
+        ),
+      );
+    } else {
+      print("🔴 [Frontend] Failed to create order after payment. Response: ${orderResponse.body}");
+    }
+  } catch (e) {
+    print("🔴 [Frontend] Exception during order creation after payment success: $e");
   }
+}
+
+// Add the _clearCartItems method to your PayWithRazorpayScreen:
+Future<void> _clearCartItems(String userId) async {
+  var url = Uri.parse('http://192.168.0.129:5000/api/cart/clear/$userId');
+
+  try {
+    var response = await http.delete(url);
+
+    if (response.statusCode == 200) {
+      print("🟢 Cart cleared successfully.");
+    } else {
+      print("🔴 Failed to clear the cart.");
+    }
+  } catch (e) {
+    print("🔴 Error clearing cart: $e");
+  }
+}
 
   // Handle payment error (including cancellations)
   void _handlePaymentError(PaymentFailureResponse response) {
@@ -54,12 +127,18 @@ Future<String> _createOrderOnBackend() async {
   final amountInPaise = (widget.grandTotal * 100).toInt();
   print("🔵 [Frontend] Initiating backend order creation with amount: $amountInPaise paise");
 
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId');
+
+  print("🔵 [Frontend] Fetched User ID from SharedPreferences: $userId");
+
   try {
     var response = await http.post(
       Uri.parse(url),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'amount': amountInPaise,
+        'userId': userId,  // Pass the userId here
       }),
     );
 
@@ -80,7 +159,6 @@ Future<String> _createOrderOnBackend() async {
     throw Exception('Failed to create Razorpay order');
   }
 }
-
   // Function to initiate Razorpay payment
   void _initiateRazorpayPayment() async {
     try {
@@ -90,7 +168,7 @@ Future<String> _createOrderOnBackend() async {
       var options = {
   'key': 'rzp_test_eR5i8vZrGKVnEB',  // Your Razorpay key_id
   'amount': (widget.grandTotal * 100).toInt().toString(),  // Amount in paise (integer)
-  'name': 'Payment for Your Order',
+  'name': 'Kaifee Quick Mart',
   'description': 'Purchase from Your Store',
   'order_id': orderId,  // Use the orderId received from the backend
   'prefill': {

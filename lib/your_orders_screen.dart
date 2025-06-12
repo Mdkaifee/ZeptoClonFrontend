@@ -8,8 +8,8 @@ import 'home_screen.dart'; // Import HomeScreen
 
 class YourOrdersScreen extends StatefulWidget {
   final bool isFromPayWithCash;
-
-  const YourOrdersScreen({Key? key, this.isFromPayWithCash = false}) : super(key: key);
+final bool isFromPayWithRazorpay;
+  const YourOrdersScreen({Key? key, this.isFromPayWithCash = false,  this.isFromPayWithRazorpay = false,}) : super(key: key);
 
   @override
   _YourOrdersScreenState createState() => _YourOrdersScreenState();
@@ -77,7 +77,7 @@ class _YourOrdersScreenState extends State<YourOrdersScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
     onWillPop: () async {
-  if (widget.isFromPayWithCash) {
+  if (widget.isFromPayWithCash || widget.isFromPayWithRazorpay) {
     // If coming from PayWithCashScreen, navigate to HomeScreen with required parameters
     final prefs = await SharedPreferences.getInstance();
     final userData = prefs.getString('userData');
