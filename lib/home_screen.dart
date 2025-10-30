@@ -22,6 +22,9 @@ import 'package:flutter_application_1/features/catalog/data/models/product_model
 import 'package:flutter_application_1/features/orders/cubit/orders_cubit.dart';
 import 'package:flutter_application_1/features/payment/cubit/checkout_cubit.dart';
 import 'package:flutter_application_1/features/payment/cubit/checkout_state.dart';
+import 'package:flutter_application_1/features/wishlist/cubit/wishlist_cubit.dart';
+import 'package:flutter_application_1/features/wishlist/cubit/wishlist_state.dart';
+import 'package:flutter_application_1/features/wishlist/presentation/wishlist_screen.dart';
 import 'package:flutter_application_1/register_page.dart';
 
 import 'cart.dart';
@@ -43,11 +46,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int _currentIndex = _shopIndex;
   bool _cartRequested = false;
+  bool _wishlistRequested = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _maybeFetchCart();
+    _maybeFetchWishlist();
   }
 
   void _maybeFetchCart() {
@@ -57,6 +62,16 @@ class _HomeScreenState extends State<HomeScreen> {
     if (authState.status == AuthStatus.authenticated && user.isNotEmpty) {
       context.read<CartBloc>().add(CartRequested(userId: user.id));
       _cartRequested = true;
+    }
+  }
+
+  void _maybeFetchWishlist() {
+    if (_wishlistRequested) return;
+    final authState = context.read<AuthBloc>().state;
+    final user = authState.user;
+    if (authState.status == AuthStatus.authenticated && user.isNotEmpty) {
+      context.read<WishlistCubit>().loadWishlist(user.id);
+      _wishlistRequested = true;
     }
   }
 
@@ -103,6 +118,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _openWishlist(UserModel user) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: context.read<WishlistCubit>(),
+          child: WishlistScreen(userId: user.id),
+        ),
+      ),
+    );
+  }
+
   void _openCategoryProducts(String category) {
     final repository = context.read<CategoryRepository>();
     Navigator.push(
@@ -111,6 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (_) => MultiBlocProvider(
           providers: [
             BlocProvider.value(value: context.read<CartBloc>()),
+            BlocProvider.value(value: context.read<WishlistCubit>()),
             BlocProvider<CategoryProductsCubit>(
               create: (_) =>
                   CategoryProductsCubit(categoryRepository: repository),
@@ -237,6 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return _AccountTab(
           onEditProfile: _showEditProfileDialog,
           onViewOrders: _openOrders,
+          onViewWishlist: _openWishlist,
         );
       default:
         return const SizedBox.shrink();
@@ -257,6 +286,8 @@ class _HomeScreenState extends State<HomeScreen> {
           listener: (context, state) {
             if (state.status == AuthStatus.unauthenticated) {
               _cartRequested = false;
+              _wishlistRequested = false;
+              context.read<WishlistCubit>().clear();
               Navigator.pushNamedAndRemoveUntil(
                 context,
                 AppRoutes.login,
@@ -276,7 +307,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
             if (state.status == AuthStatus.authenticated) {
               _cartRequested = false;
+              _wishlistRequested = false;
               _maybeFetchCart();
+              _maybeFetchWishlist();
             }
           },
         ),
@@ -290,6 +323,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 SnackBar(content: Text(state.infoMessage!)),
               );
             } else if (state.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.errorMessage!)),
+              );
+            }
+          },
+        ),
+        BlocListener<WishlistCubit, WishlistState>(
+          listenWhen: (previous, current) =>
+              previous.infoMessage != current.infoMessage ||
+              previous.errorMessage != current.errorMessage,
+          listener: (context, state) {
+            if (state.infoMessage != null && state.infoMessage!.isNotEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.infoMessage!)),
+              );
+            } else if (state.errorMessage != null &&
+                state.errorMessage!.isNotEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(state.errorMessage!)),
               );
@@ -417,12 +467,14 @@ class _ShopTabState extends State<_ShopTab> {
   Future<void> _refresh(BuildContext context) async {
     final catalogCubit = context.read<CatalogCubit>();
     final cartBloc = context.read<CartBloc>();
+    final wishlistCubit = context.read<WishlistCubit>();
     final authState = context.read<AuthBloc>().state;
 
     await catalogCubit.fetchProducts();
     if (authState.status == AuthStatus.authenticated &&
         authState.user.isNotEmpty) {
       cartBloc.add(CartRequested(userId: authState.user.id));
+      await wishlistCubit.refresh(authState.user.id);
     }
   }
 
@@ -441,6 +493,23 @@ class _ShopTabState extends State<_ShopTab> {
       );
       return nameMatch || categoryMatch || multiCategoryMatch;
     }).toList();
+  }
+
+  void _onWishlistTap(ProductModel product) {
+    final authState = context.read<AuthBloc>().state;
+    final user = authState.user;
+    if (authState.status != AuthStatus.authenticated || user.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login to manage wishlist')),
+      );
+      Navigator.pushReplacementNamed(context, RegisterPage.routeName);
+      return;
+    }
+
+    context.read<WishlistCubit>().toggleWishlist(
+          userId: user.id,
+          productId: product.id,
+        );
   }
 
   @override
@@ -507,15 +576,33 @@ class _ShopTabState extends State<_ShopTab> {
 
                 return BlocBuilder<CartBloc, CartState>(
                   builder: (context, cartState) {
-                    return ListView.separated(
-                      padding: const EdgeInsets.only(bottom: 80, top: 12),
-                      itemCount: filteredProducts.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final product = filteredProducts[index];
-                        return _ProductTile(
-                          product: product,
-                          onAddToCart: () => widget.onAddToCart(product.id),
+                    return BlocBuilder<WishlistCubit, WishlistState>(
+                      builder: (context, wishlistState) {
+                        final wishlistIds = wishlistState.productIds;
+                        final pendingId = wishlistState.pendingProductId;
+                        final isWishlistUpdating = wishlistState.isUpdating;
+
+                        return ListView.separated(
+                          padding: const EdgeInsets.only(bottom: 80, top: 12),
+                          itemCount: filteredProducts.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 8),
+                          itemBuilder: (context, index) {
+                            final product = filteredProducts[index];
+                            final isFavorite =
+                                wishlistIds.contains(product.id);
+                            final isToggling =
+                                isWishlistUpdating && pendingId == product.id;
+
+                            return _ProductTile(
+                              product: product,
+                              onAddToCart: () =>
+                                  widget.onAddToCart(product.id),
+                              onToggleWishlist: () => _onWishlistTap(product),
+                              isFavorite: isFavorite,
+                              isWishlistUpdating: isToggling,
+                            );
+                          },
                         );
                       },
                     );
@@ -534,10 +621,16 @@ class _ProductTile extends StatelessWidget {
   const _ProductTile({
     required this.product,
     required this.onAddToCart,
+    required this.onToggleWishlist,
+    required this.isFavorite,
+    required this.isWishlistUpdating,
   });
 
   final ProductModel product;
   final VoidCallback onAddToCart;
+  final VoidCallback onToggleWishlist;
+  final bool isFavorite;
+  final bool isWishlistUpdating;
 
   @override
   Widget build(BuildContext context) {
@@ -548,12 +641,41 @@ class _ProductTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              product.name,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    product.name,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  iconSize: 22,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minHeight: 36, minWidth: 36),
+                  onPressed: isWishlistUpdating ? null : onToggleWishlist,
+                  icon: isWishlistUpdating
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          isFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: isFavorite ? Colors.redAccent : Colors.grey,
+                        ),
+                  tooltip: isFavorite
+                      ? 'Remove from wishlist'
+                      : 'Add to wishlist',
+                ),
+              ],
             ),
             if ((product.description ?? '').isNotEmpty) ...[
               const SizedBox(height: 4),
@@ -759,10 +881,12 @@ class _AccountTab extends StatelessWidget {
   const _AccountTab({
     required this.onEditProfile,
     required this.onViewOrders,
+    required this.onViewWishlist,
   });
 
   final ValueChanged<UserModel> onEditProfile;
   final ValueChanged<UserModel> onViewOrders;
+  final ValueChanged<UserModel> onViewWishlist;
 
   @override
   Widget build(BuildContext context) {
@@ -817,6 +941,12 @@ class _AccountTab extends StatelessWidget {
                 onPressed: () => onViewOrders(user),
                 icon: const Icon(Icons.receipt_long),
                 label: const Text('View Orders'),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () => onViewWishlist(user),
+                icon: const Icon(Icons.favorite_border),
+                label: const Text('My Wishlist'),
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(

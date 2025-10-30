@@ -20,6 +20,8 @@ import 'package:flutter_application_1/features/payment/cubit/checkout_cubit.dart
 import 'package:flutter_application_1/home_screen.dart';
 import 'package:flutter_application_1/features/categories/cubit/categories_cubit.dart';
 import 'package:flutter_application_1/features/categories/data/repositories/category_repository.dart';
+import 'package:flutter_application_1/features/wishlist/cubit/wishlist_cubit.dart';
+import 'package:flutter_application_1/features/wishlist/data/repositories/wishlist_repository.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +33,7 @@ void main() {
   final orderRepository = OrderRepository(apiService: apiService);
   final paymentRepository = PaymentRepository(apiService: apiService);
   final categoryRepository = CategoryRepository(apiService: apiService);
+  final wishlistRepository = WishlistRepository(apiService: apiService);
 
   runApp(
     MyApp(
@@ -40,6 +43,7 @@ void main() {
       orderRepository: orderRepository,
       paymentRepository: paymentRepository,
       categoryRepository: categoryRepository,
+      wishlistRepository: wishlistRepository,
     ),
   );
 }
@@ -53,6 +57,7 @@ class MyApp extends StatelessWidget {
     required this.orderRepository,
     required this.paymentRepository,
     required this.categoryRepository,
+    required this.wishlistRepository,
   });
 
   final AuthRepository authRepository;
@@ -61,6 +66,7 @@ class MyApp extends StatelessWidget {
   final OrderRepository orderRepository;
   final PaymentRepository paymentRepository;
   final CategoryRepository categoryRepository;
+  final WishlistRepository wishlistRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +78,7 @@ class MyApp extends StatelessWidget {
         RepositoryProvider.value(value: orderRepository),
         RepositoryProvider.value(value: paymentRepository),
         RepositoryProvider.value(value: categoryRepository),
+        RepositoryProvider.value(value: wishlistRepository),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -100,6 +107,10 @@ class MyApp extends StatelessWidget {
           BlocProvider<CategoriesCubit>(
             create: (_) =>
                 CategoriesCubit(categoryRepository: categoryRepository),
+          ),
+          BlocProvider<WishlistCubit>(
+            create: (_) =>
+                WishlistCubit(wishlistRepository: wishlistRepository),
           ),
         ],
         child: MaterialApp(

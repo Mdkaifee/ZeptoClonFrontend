@@ -2,6 +2,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:flutter_application_1/features/auth/bloc/auth_bloc.dart';
+import 'package:flutter_application_1/features/auth/bloc/auth_state.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_bloc.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_event.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_state.dart';
@@ -9,6 +10,9 @@ import 'package:flutter_application_1/features/cart/data/models/cart_item_model.
 import 'package:flutter_application_1/features/categories/cubit/category_products_cubit.dart';
 import 'package:flutter_application_1/features/categories/cubit/category_products_state.dart';
 import 'package:flutter_application_1/features/catalog/data/models/product_model.dart';
+import 'package:flutter_application_1/features/wishlist/cubit/wishlist_cubit.dart';
+import 'package:flutter_application_1/features/wishlist/cubit/wishlist_state.dart';
+import 'package:flutter_application_1/register_page.dart';
 
 class CategoryProductsScreen extends StatefulWidget {
   const CategoryProductsScreen({
@@ -33,6 +37,23 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
         .fetchProducts(widget.category);
   }
 
+  void _onWishlistTap(ProductModel product) {
+    final authState = context.read<AuthBloc>().state;
+    final user = authState.user;
+    if (authState.status != AuthStatus.authenticated || user.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login to manage wishlist')),
+      );
+      Navigator.pushReplacementNamed(context, RegisterPage.routeName);
+      return;
+    }
+
+    context.read<WishlistCubit>().toggleWishlist(
+          userId: user.id,
+          productId: product.id,
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,15 +76,29 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
                   child: Text('No products available for this category.'),
                 );
               }
-              return ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: state.products.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final product = state.products[index];
-                  return _CategoryProductCard(
-                    product: product,
-                    onAddToCart: () => widget.onAddToCart(product.id),
+              return BlocBuilder<WishlistCubit, WishlistState>(
+                builder: (context, wishlistState) {
+                  final wishlistIds = wishlistState.productIds;
+                  final pendingId = wishlistState.pendingProductId;
+                  final isUpdating = wishlistState.isUpdating;
+
+                  return ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: state.products.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final product = state.products[index];
+                      final isFavorite = wishlistIds.contains(product.id);
+                      final isWishlistUpdating =
+                          isUpdating && pendingId == product.id;
+                      return _CategoryProductCard(
+                        product: product,
+                        onAddToCart: () => widget.onAddToCart(product.id),
+                        onToggleWishlist: () => _onWishlistTap(product),
+                        isFavorite: isFavorite,
+                        isWishlistUpdating: isWishlistUpdating,
+                      );
+                    },
                   );
                 },
               );
@@ -114,10 +149,16 @@ class _CategoryProductCard extends StatelessWidget {
   const _CategoryProductCard({
     required this.product,
     required this.onAddToCart,
+    required this.onToggleWishlist,
+    required this.isFavorite,
+    required this.isWishlistUpdating,
   });
 
   final ProductModel product;
   final VoidCallback onAddToCart;
+  final VoidCallback onToggleWishlist;
+  final bool isFavorite;
+  final bool isWishlistUpdating;
 
   @override
   Widget build(BuildContext context) {
@@ -136,12 +177,47 @@ class _CategoryProductCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        product.name,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              product.name,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            iconSize: 22,
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints:
+                                const BoxConstraints(minHeight: 36, minWidth: 36),
+                            onPressed:
+                                isWishlistUpdating ? null : onToggleWishlist,
+                            icon: isWishlistUpdating
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Icon(
+                                    isFavorite
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: isFavorite
+                                        ? Colors.redAccent
+                                        : Colors.grey,
+                                  ),
+                            tooltip: isFavorite
+                                ? 'Remove from wishlist'
+                                : 'Add to wishlist',
+                          ),
+                        ],
                       ),
                       if ((product.description ?? '').isNotEmpty) ...[
                         const SizedBox(height: 4),
