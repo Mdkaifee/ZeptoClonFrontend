@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
@@ -30,6 +30,7 @@ class PayWithRazorpayScreen extends StatefulWidget {
 class _PayWithRazorpayScreenState extends State<PayWithRazorpayScreen> {
   late final Razorpay _razorpay;
   bool _paymentInitiated = false;
+  bool _isConfirming = false;
 
   @override
   void initState() {
@@ -46,8 +47,10 @@ class _PayWithRazorpayScreenState extends State<PayWithRazorpayScreen> {
   }
 
   Future<void> _initiatePayment(BuildContext context) async {
-    if (_paymentInitiated) return;
-    _paymentInitiated = true;
+    if (_paymentInitiated || _isConfirming) return;
+    setState(() {
+      _paymentInitiated = true;
+    });
     final messenger = ScaffoldMessenger.of(context);
     try {
       final checkoutCubit = context.read<CheckoutCubit>();
@@ -73,11 +76,22 @@ class _PayWithRazorpayScreenState extends State<PayWithRazorpayScreen> {
         SnackBar(content: Text('Unable to start payment: $error')),
       );
     } finally {
-      _paymentInitiated = false;
+      if (mounted) {
+        setState(() {
+          _paymentInitiated = false;
+        });
+      } else {
+        _paymentInitiated = false;
+      }
     }
   }
 
   void _handleSuccess(PaymentSuccessResponse response) {
+    if (!_isConfirming) {
+      setState(() {
+        _isConfirming = true;
+      });
+    }
     final checkoutCubit = context.read<CheckoutCubit>();
     checkoutCubit
         .placeOrder(
@@ -88,9 +102,12 @@ class _PayWithRazorpayScreenState extends State<PayWithRazorpayScreen> {
         )
         .then((order) {
       if (!mounted) return;
-      context
-          .read<CartBloc>()
-          .add(CartRequested(userId: widget.user.id));
+      setState(() {
+        _isConfirming = false;
+      });
+      context.read<CartBloc>().add(
+            CartRequested(userId: widget.user.id),
+          );
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
@@ -103,6 +120,9 @@ class _PayWithRazorpayScreenState extends State<PayWithRazorpayScreen> {
       );
     }).catchError((error) {
       if (!mounted) return;
+      setState(() {
+        _isConfirming = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to confirm payment: $error')),
       );
@@ -126,50 +146,83 @@ class _PayWithRazorpayScreenState extends State<PayWithRazorpayScreen> {
           );
         }
       },
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Pay with Razorpay')),
-        body: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Review Your Payment',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      child: Stack(
+        children: [
+          Scaffold(
+            appBar: AppBar(title: const Text('Pay with Razorpay')),
+            body: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Review Your Payment',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Amount: ₹ ${widget.amount.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: widget.cartItems.length,
+                      itemBuilder: (context, index) {
+                        final item = widget.cartItems[index];
+                        return ListTile(
+                          title: Text(item.product.name),
+                          subtitle: Text(
+                            '${item.quantity} × ₹ ${item.unitPrice.toStringAsFixed(2)}',
+                          ),
+                          trailing: Text(
+                            '₹ ${item.totalPrice.toStringAsFixed(2)}',
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: (_paymentInitiated || _isConfirming)
+                          ? null
+                          : () => _initiatePayment(context),
+                      child: _paymentInitiated
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Pay Now'),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Amount: ₹${widget.amount.toStringAsFixed(2)}',
-                style: const TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: widget.cartItems.length,
-                  itemBuilder: (context, index) {
-                    final item = widget.cartItems[index];
-                    return ListTile(
-                      title: Text(item.product.name),
-                      subtitle: Text('${item.quantity} item— ₹${item.product.price}'),
-                      trailing:
-                          Text('₹${item.totalPrice.toStringAsFixed(2)}'),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => _initiatePayment(context),
-                  child: const Text('Pay Now'),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          if (_isConfirming)
+            IgnorePointer(
+              ignoring: true,
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.5),
+                alignment: Alignment.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text(
+                      'Finalizing payment...',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 }
-

@@ -57,7 +57,12 @@ class _YourOrdersScreenState extends State<YourOrdersScreen> {
             );
           }
 
-          final orders = state.orders;
+          final orders = List<OrderModel>.from(state.orders)
+            ..sort((a, b) {
+              final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+              final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+              return bDate.compareTo(aDate);
+            });
           if (orders.isEmpty) {
             return const Center(child: Text('No orders found.'));
           }
