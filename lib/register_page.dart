@@ -23,7 +23,7 @@ class _RegisterPageState extends State<RegisterPage> {
   void _registerUser() async {
     if (_formKey.currentState!.validate()) {
       logger.d("Form is valid, attempting to register user.");
-      var url = Uri.parse('http://192.168.0.129:5000/api/auth/signup');
+      var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/auth/signup');
       // Adjust the URL as needed
       try {
         logger.d("Sending HTTP POST to $url");

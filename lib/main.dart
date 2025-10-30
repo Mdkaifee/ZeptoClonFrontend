@@ -51,7 +51,7 @@ class _LoginPageState extends State<LoginPage> {
       setState(() {
         _isLoading = true;
       });
-      var url = Uri.parse('http://192.168.0.129:5000/api/auth/login');
+      var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/auth/login');
       try {
         var response = await http.post(
           url,

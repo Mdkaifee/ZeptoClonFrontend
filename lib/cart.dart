@@ -37,7 +37,7 @@ void updateQuantity(int index, int change) async {
   // Prevent negative quantities
   if (newQuantity < 0) return;
 
-  final url = Uri.parse('http://192.168.0.129:5000/api/cart/update');
+  final url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app /api/cart/update');
   final response = await http.put(
     url,
     headers: {'Content-Type': 'application/json'},

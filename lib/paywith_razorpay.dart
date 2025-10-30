@@ -48,7 +48,7 @@ void _handlePaymentSuccess(PaymentSuccessResponse response) async {
   try {
     // Create order in backend with payment status 'Paid'
     var orderResponse = await http.post(
-      Uri.parse('http://192.168.0.129:5000/api/orders/'),
+      Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/orders/'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'userId': userId,
@@ -100,7 +100,7 @@ void _handlePaymentSuccess(PaymentSuccessResponse response) async {
 
 // Add the _clearCartItems method to your PayWithRazorpayScreen:
 Future<void> _clearCartItems(String userId) async {
-  var url = Uri.parse('http://192.168.0.129:5000/api/cart/clear/$userId');
+  var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/cart/clear/$userId');
 
   try {
     var response = await http.delete(url);
@@ -122,7 +122,7 @@ Future<void> _clearCartItems(String userId) async {
   }
 
 Future<String> _createOrderOnBackend() async {
-  final url = 'http://192.168.0.129:5000/api/payment/create-order';
+  final url = 'https://5e0c1fb67d19.ngrok-free.app/api/payment/create-order';
 
   final amountInPaise = (widget.grandTotal * 100).toInt();
   print("🔵 [Frontend] Initiating backend order creation with amount: $amountInPaise paise");

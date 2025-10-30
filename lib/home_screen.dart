@@ -64,7 +64,7 @@ void _loadUserData() async {
 }
 
 Future<void> _fetchProducts() async {
-  var url = Uri.parse('http://192.168.0.129:5000/api/products');
+  var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/products');
   try {
     var response = await http.get(url);
     print("API Response Status: ${response.statusCode}");
@@ -101,7 +101,7 @@ Future<void> _fetchCartItems() async {
     return;
   }
 
-  final url = Uri.parse('http://192.168.0.129:5000/api/cart/user/$userId');
+  final url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/cart/user/$userId');
   print("Fetching cart for user: $userId");
 
   try {
@@ -193,7 +193,7 @@ void addToCart(String userId, String productId, int quantity) async {
 
   try {
     isAddingToCart = true;
-    var url = Uri.parse('http://192.168.0.129:5000/api/cart/add');
+    var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/cart/add');
     var response = await http.post(
       url,
       headers: {
@@ -296,7 +296,7 @@ Future<void> decrementQuantity(String productId, String cartItemId) async {
     });
 
     // Call API to update the cart quantity (decrease by 1)
-    var url = Uri.parse('http://192.168.0.129:5000/api/cart/update');
+    var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/cart/update');
     var response = await http.put(url, 
       headers: {
         'Content-Type': 'application/json',
@@ -646,7 +646,7 @@ Future<void> updateProfile() async {
     return;
   }
 
-  var url = Uri.parse('http://192.168.0.129:5000/api/user/edit/$userId');
+  var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/user/edit/$userId');
   try {
     var response = await http.patch(
       url,

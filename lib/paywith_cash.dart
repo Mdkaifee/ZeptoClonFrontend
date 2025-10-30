@@ -35,7 +35,7 @@ Future<String?> _getUserId() async {
   return userId;
 }
 Future<void> _createOrder(String userId) async {
-  var url = Uri.parse('http://192.168.0.129:5000/api/orders');  // API URL to save the order
+  var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/orders');  // API URL to save the order
 
   // Prepare order data to be sent to API
   var orderData = {
@@ -86,7 +86,7 @@ Future<void> _createOrder(String userId) async {
 }
 
 Future<void> _clearCartItems(String userId) async {
-  var url = Uri.parse('http://192.168.0.129:5000/api/cart/clear/$userId');  // Clear cart API endpoint
+  var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/cart/clear/$userId');  // Clear cart API endpoint
 
   try {
     var response = await http.delete(url);
