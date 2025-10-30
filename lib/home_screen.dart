@@ -219,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final user = state.user;
         return user.isNotEmpty ? 'Hi, ${user.name}' : 'Welcome';
       case _categoriesIndex:
-        return 'Categories';
+        return 'All Categories';
       case _accountIndex:
         return 'Account';
       default:
@@ -377,10 +377,42 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _ShopTab extends StatelessWidget {
+class _ShopTab extends StatefulWidget {
   const _ShopTab({required this.onAddToCart});
 
   final void Function(String productId) onAddToCart;
+
+  @override
+  State<_ShopTab> createState() => _ShopTabState();
+}
+
+class _ShopTabState extends State<_ShopTab> {
+  late final TextEditingController _searchController;
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final nextQuery = _searchController.text;
+    if (nextQuery == _searchQuery) {
+      return;
+    }
+    setState(() {
+      _searchQuery = nextQuery;
+    });
+  }
 
   Future<void> _refresh(BuildContext context) async {
     final catalogCubit = context.read<CatalogCubit>();
@@ -394,53 +426,106 @@ class _ShopTab extends StatelessWidget {
     }
   }
 
+  List<ProductModel> _filteredProducts(List<ProductModel> products) {
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) {
+      return products;
+    }
+
+    return products.where((product) {
+      final nameMatch = product.name.toLowerCase().contains(query);
+      final categoryMatch =
+          (product.category ?? '').toLowerCase().contains(query);
+      final multiCategoryMatch = product.categories.any(
+        (category) => category.toLowerCase().contains(query),
+      );
+      return nameMatch || categoryMatch || multiCategoryMatch;
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: () => _refresh(context),
-      child: BlocBuilder<CatalogCubit, CatalogState>(
-        builder: (context, catalogState) {
-          if (catalogState.status == CatalogStatus.loading &&
-              catalogState.products.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (catalogState.status == CatalogStatus.failure) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  catalogState.errorMessage ?? 'Failed to load products',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16),
-                ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
+              hintText: 'Search products or categories',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-            );
-          }
+              isDense: true,
+            ),
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () => _refresh(context),
+            child: BlocBuilder<CatalogCubit, CatalogState>(
+              builder: (context, catalogState) {
+                if (catalogState.status == CatalogStatus.loading &&
+                    catalogState.products.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          final products = catalogState.products;
-          if (products.isEmpty) {
-            return const Center(child: Text('No products available.'));
-          }
-
-          return BlocBuilder<CartBloc, CartState>(
-            builder: (context, cartState) {
-              return ListView.separated(
-                padding: const EdgeInsets.only(bottom: 80, top: 12),
-                itemCount: products.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final product = products[index];
-                  return _ProductTile(
-                    product: product,
-                    onAddToCart: () => onAddToCart(product.id),
+                if (catalogState.status == CatalogStatus.failure) {
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          catalogState.errorMessage ??
+                              'Failed to load products',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ],
                   );
-                },
-              );
-            },
-          );
-        },
-      ),
+                }
+
+                final filteredProducts =
+                    _filteredProducts(catalogState.products);
+                if (filteredProducts.isEmpty) {
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          'No matching products found.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  );
+                }
+
+                return BlocBuilder<CartBloc, CartState>(
+                  builder: (context, cartState) {
+                    return ListView.separated(
+                      padding: const EdgeInsets.only(bottom: 80, top: 12),
+                      itemCount: filteredProducts.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final product = filteredProducts[index];
+                        return _ProductTile(
+                          product: product,
+                          onAddToCart: () => widget.onAddToCart(product.id),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -748,5 +833,4 @@ class _AccountTab extends StatelessWidget {
     );
   }
 }
-
 
