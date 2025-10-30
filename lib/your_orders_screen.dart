@@ -110,7 +110,8 @@ class _OrderCard extends StatelessWidget {
                   children: [
                     Expanded(child: Text(item.product.name)),
                     Text('${item.quantity}'),
-                    // Text('₹${item.totalPrice.toStringAsFixed(2)}'),
+                    Text('x'),
+                    Text('₹${item.totalPrice.toStringAsFixed(2)}'),
                   ],
                 ),
               ),
