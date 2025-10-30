@@ -26,6 +26,11 @@ class OrderRepository {
       return const <OrderModel>[];
     }
 
+    if (response.statusCode == 404) {
+      // Treat "not found" as empty orders list to avoid surfacing an error.
+      return const <OrderModel>[];
+    }
+
     throw AppException(
       _extractMessage(decoded) ?? 'Failed to fetch orders',
       statusCode: response.statusCode,
@@ -54,7 +59,44 @@ class OrderRepository {
     final decoded = _decode(response);
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      return OrderModel.fromJson(decoded as Map<String, dynamic>);
+      Map<String, dynamic>? orderJson;
+
+      if (decoded is Map<String, dynamic>) {
+        if (decoded['order'] is Map<String, dynamic>) {
+          orderJson = decoded['order'] as Map<String, dynamic>;
+        } else if (decoded['data'] is Map<String, dynamic>) {
+          orderJson = decoded['data'] as Map<String, dynamic>;
+        } else if (decoded.containsKey('cartItems')) {
+          orderJson = decoded;
+        }
+      }
+
+      OrderModel? parsedOrder;
+      if (orderJson != null) {
+        try {
+          parsedOrder = OrderModel.fromJson(orderJson);
+        } catch (_) {
+          parsedOrder = null;
+        }
+      }
+
+      if (parsedOrder != null) {
+        return parsedOrder;
+      }
+
+      final fallbackId = orderJson?['_id']?.toString() ??
+          orderJson?['id']?.toString() ??
+          decoded?['orderId']?.toString() ??
+          '';
+
+      return OrderModel(
+        id: fallbackId,
+        items: cartItems,
+        totalAmount: totalAmount,
+        paymentStatus: paymentStatus,
+        orderStatus: orderStatus,
+        createdAt: DateTime.now(),
+      );
     }
 
     throw AppException(

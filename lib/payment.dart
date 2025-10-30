@@ -57,7 +57,7 @@ class _PaymentOptionScreenState extends State<PaymentOptionScreen> {
                             child: ListTile(
                               title: Text(item.product.name),
                               subtitle: Text(
-                                '${item.quantity} Ã— ₹${item.product.price.toStringAsFixed(2)}',
+                                '${item.quantity} item— ₹${item.product.price.toStringAsFixed(2)}',
                               ),
                               trailing: Text(
                                 '₹${item.totalPrice.toStringAsFixed(2)}',

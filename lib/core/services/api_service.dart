@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 class ApiService {
   ApiService({http.Client? client}) : _client = client ?? http.Client();
 
-  static const String baseUrl = 'https://5e0c1fb67d19.ngrok-free.app';
+  static const String baseUrl = 'https://fe69e0b5c34c.ngrok-free.app';
 
   final http.Client _client;
 

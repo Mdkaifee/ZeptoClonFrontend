@@ -109,8 +109,8 @@ class _OrderCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(child: Text(item.product.name)),
-                    Text('x${item.quantity}'),
-                    Text('₹${item.totalPrice.toStringAsFixed(2)}'),
+                    Text('${item.quantity}'),
+                    // Text('₹${item.totalPrice.toStringAsFixed(2)}'),
                   ],
                 ),
               ),
