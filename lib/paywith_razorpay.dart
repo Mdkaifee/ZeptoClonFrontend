@@ -92,6 +92,7 @@ class _PayWithRazorpayScreenState extends State<PayWithRazorpayScreen> {
         _isConfirming = true;
       });
     }
+
     final checkoutCubit = context.read<CheckoutCubit>();
     checkoutCubit
         .placeOrder(
@@ -130,9 +131,69 @@ class _PayWithRazorpayScreenState extends State<PayWithRazorpayScreen> {
   }
 
   void _handleError(PaymentFailureResponse response) {
+    if (!mounted) {
+      return;
+    }
+    final fallback = _mapFailureMessage(response);
+    setState(() {
+      _paymentInitiated = false;
+      _isConfirming = false;
+    });
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(response.message ?? 'Payment cancelled')),
+      SnackBar(content: Text(fallback)),
     );
+  }
+
+  String _mapFailureMessage(PaymentFailureResponse response) {
+    final raw = response.message;
+    if (_hasMeaningfulText(raw)) {
+      return raw!.trim();
+    }
+
+    final extracted = _extractDescription(response.error);
+    if (_hasMeaningfulText(extracted)) {
+      return extracted!.trim();
+    }
+
+    return 'Payment cancelled';
+  }
+
+  String? _extractDescription(dynamic error) {
+    if (error == null) {
+      return null;
+    }
+
+    if (error is Map) {
+      final nested = error['description'] ??
+          (error['error'] is Map ? error['error']['description'] : null) ??
+          (error['data'] is Map ? error['data']['description'] : null);
+      if (_hasMeaningfulText(nested?.toString())) {
+        return nested.toString();
+      }
+    }
+
+    final text = error.toString();
+    return _hasMeaningfulText(text) ? text : null;
+  }
+
+  bool _hasMeaningfulText(String? value) {
+    if (value == null) {
+      return false;
+    }
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return false;
+    }
+    final lower = trimmed.toLowerCase();
+    if (lower == 'undefined' || lower == 'null') {
+      return false;
+    }
+    if (lower.contains('description: undefined') ||
+        lower.contains('"description":"undefined"') ||
+        lower.contains("'description':'undefined'")) {
+      return false;
+    }
+    return true;
   }
 
   @override
