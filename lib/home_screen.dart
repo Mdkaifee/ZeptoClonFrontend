@@ -122,8 +122,11 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => BlocProvider.value(
-          value: context.read<WishlistCubit>(),
+        builder: (_) => MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: context.read<WishlistCubit>()),
+            BlocProvider.value(value: context.read<CartBloc>()),
+          ],
           child: WishlistScreen(userId: user.id),
         ),
       ),

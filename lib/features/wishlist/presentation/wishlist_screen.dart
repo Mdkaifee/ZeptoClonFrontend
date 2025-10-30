@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:flutter_application_1/cart.dart';
 import 'package:flutter_application_1/features/auth/bloc/auth_bloc.dart';
 import 'package:flutter_application_1/features/auth/bloc/auth_state.dart';
+import 'package:flutter_application_1/features/cart/bloc/cart_bloc.dart';
+import 'package:flutter_application_1/features/cart/bloc/cart_event.dart';
+import 'package:flutter_application_1/features/cart/bloc/cart_state.dart';
 import 'package:flutter_application_1/features/catalog/data/models/product_model.dart';
 import 'package:flutter_application_1/features/wishlist/cubit/wishlist_cubit.dart';
 import 'package:flutter_application_1/features/wishlist/cubit/wishlist_state.dart';
@@ -23,10 +27,17 @@ class _WishlistScreenState extends State<WishlistScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<WishlistCubit>().loadWishlist(
-            widget.userId,
-            forceRefresh: true,
-          );
+      context
+          .read<WishlistCubit>()
+          .loadWishlist(widget.userId, forceRefresh: true);
+
+      final authState = context.read<AuthBloc>().state;
+      final cartBloc = context.read<CartBloc>();
+      if (authState.status == AuthStatus.authenticated &&
+          authState.user.isNotEmpty &&
+          cartBloc.state.status == CartStatus.initial) {
+        cartBloc.add(CartRequested(userId: authState.user.id));
+      }
     });
   }
 
@@ -51,69 +62,176 @@ class _WishlistScreenState extends State<WishlistScreen> {
         );
   }
 
+  void _addToCart(ProductModel product) {
+    final authState = context.read<AuthBloc>().state;
+    final user = authState.user;
+    if (authState.status != AuthStatus.authenticated || user.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login to add items to cart')),
+      );
+      Navigator.pushReplacementNamed(context, RegisterPage.routeName);
+      return;
+    }
+
+    context.read<CartBloc>().add(
+          CartItemAdded(
+            userId: user.id,
+            productId: product.id,
+          ),
+        );
+  }
+
+  void _openCart() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: context.read<CartBloc>(),
+          child: const CartScreen(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('My Wishlist')),
-      body: BlocBuilder<WishlistCubit, WishlistState>(
-        builder: (context, state) {
-          if (state.status == WishlistStatus.loading &&
-              state.products.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (state.status == WishlistStatus.failure &&
-              state.products.isEmpty) {
-            final message =
-                state.errorMessage ?? 'Failed to load wishlist items.';
-            return _WishlistErrorView(
-              message: message,
-              onRetry: () => _refresh(),
-            );
-          }
-
-          if (state.products.isEmpty) {
-            return RefreshIndicator(
-              onRefresh: _refresh,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 120),
-                  Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 24),
-                      child: Text(
-                        'Your wishlist is empty.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16),
+    return BlocListener<CartBloc, CartState>(
+      listenWhen: (previous, current) =>
+          previous.infoMessage != current.infoMessage ||
+          previous.errorMessage != current.errorMessage,
+      listener: (context, state) {
+        if (state.infoMessage != null && state.infoMessage!.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.infoMessage!)),
+          );
+        } else if (state.errorMessage != null &&
+            state.errorMessage!.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.errorMessage!)),
+          );
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('My Wishlist'),
+          actions: [
+            BlocBuilder<CartBloc, CartState>(
+              builder: (context, cartState) {
+                final totalItems = cartState.totalItems;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      IconButton(
+                        onPressed: _openCart,
+                        icon: const Icon(Icons.shopping_cart_outlined),
+                        tooltip: 'View Cart',
                       ),
-                    ),
+                      if (totalItems > 0)
+                        Positioned(
+                          right: 6,
+                          top: 6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              totalItems > 99 ? '99+' : '$totalItems',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                ],
-              ),
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: _refresh,
-            child: ListView.separated(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              itemCount: state.products.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final product = state.products[index];
-                final isUpdating = state.isUpdating &&
-                    state.pendingProductId == product.id;
-                return _WishlistItemCard(
-                  product: product,
-                  isUpdating: isUpdating,
-                  onRemove: () => _toggleWishlist(product),
                 );
               },
             ),
-          );
-        },
+          ],
+        ),
+        body: BlocBuilder<WishlistCubit, WishlistState>(
+          builder: (context, wishlistState) {
+            if (wishlistState.status == WishlistStatus.loading &&
+                wishlistState.products.isEmpty) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (wishlistState.status == WishlistStatus.failure &&
+                wishlistState.products.isEmpty) {
+              final message =
+                  wishlistState.errorMessage ?? 'Failed to load wishlist items.';
+              return _WishlistErrorView(
+                message: message,
+                onRetry: () => _refresh(),
+              );
+            }
+
+            if (wishlistState.products.isEmpty) {
+              return RefreshIndicator(
+                onRefresh: _refresh,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: const [
+                    SizedBox(height: 120),
+                    Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          'Your wishlist is empty.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return BlocBuilder<CartBloc, CartState>(
+              builder: (context, cartState) {
+                return RefreshIndicator(
+                  onRefresh: _refresh,
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    itemCount: wishlistState.products.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final product = wishlistState.products[index];
+                      final isWishlistUpdating = wishlistState.isUpdating &&
+                          wishlistState.pendingProductId == product.id;
+                      final isInCart = cartState.items.any(
+                        (item) => item.product.id == product.id,
+                      );
+                      final isAddingToCart = cartState.isUpdating &&
+                          cartState.pendingProductId == product.id;
+
+                      return _WishlistItemCard(
+                        product: product,
+                        isWishlistUpdating: isWishlistUpdating,
+                        isInCart: isInCart,
+                        isAddingToCart: isAddingToCart,
+                        onAddToCart: () => _addToCart(product),
+                        onRemove: () => _toggleWishlist(product),
+                        onViewCart: _openCart,
+                      );
+                    },
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -122,13 +240,21 @@ class _WishlistScreenState extends State<WishlistScreen> {
 class _WishlistItemCard extends StatelessWidget {
   const _WishlistItemCard({
     required this.product,
-    required this.isUpdating,
+    required this.isWishlistUpdating,
+    required this.isInCart,
+    required this.isAddingToCart,
+    required this.onAddToCart,
     required this.onRemove,
+    required this.onViewCart,
   });
 
   final ProductModel product;
-  final bool isUpdating;
+  final bool isWishlistUpdating;
+  final bool isInCart;
+  final bool isAddingToCart;
+  final VoidCallback onAddToCart;
   final VoidCallback onRemove;
+  final VoidCallback onViewCart;
 
   @override
   Widget build(BuildContext context) {
@@ -165,8 +291,8 @@ class _WishlistItemCard extends StatelessWidget {
                         padding: EdgeInsets.zero,
                         constraints:
                             const BoxConstraints(minHeight: 36, minWidth: 36),
-                        onPressed: isUpdating ? null : onRemove,
-                        icon: isUpdating
+                        onPressed: isWishlistUpdating ? null : onRemove,
+                        icon: isWishlistUpdating
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
@@ -201,6 +327,29 @@ class _WishlistItemCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: isInCart
+                        ? OutlinedButton.icon(
+                            onPressed: onViewCart,
+                            icon: const Icon(Icons.shopping_cart),
+                            label: const Text('View Cart'),
+                          )
+                        : ElevatedButton.icon(
+                            onPressed: isAddingToCart ? null : onAddToCart,
+                            icon: const Icon(Icons.add_shopping_cart),
+                            label: isAddingToCart
+                                ? const SizedBox(
+                                    height: 18,
+                                    width: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text('Add to Cart'),
+                          ),
+                  ),
                 ],
               ),
             ),
@@ -220,7 +369,7 @@ class _WishlistImage extends StatelessWidget {
   Widget build(BuildContext context) {
     const double size = 72;
     if ((imageUrl ?? '').isEmpty) {
-      return _WishlistPlaceholder(size: size);
+      return const _WishlistPlaceholder(size: size);
     }
 
     return ClipRRect(
