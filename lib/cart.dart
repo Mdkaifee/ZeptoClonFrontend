@@ -1,279 +1,241 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'home_screen.dart';  // Import your HomeScreen here
-import 'package:slide_to_act/slide_to_act.dart'; // 👈 Import this
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:flutter_application_1/features/auth/bloc/auth_bloc.dart';
+import 'package:flutter_application_1/features/auth/bloc/auth_state.dart';
+import 'package:flutter_application_1/features/cart/bloc/cart_bloc.dart';
+import 'package:flutter_application_1/features/cart/bloc/cart_event.dart';
+import 'package:flutter_application_1/features/cart/bloc/cart_state.dart';
+import 'package:flutter_application_1/features/cart/data/models/cart_item_model.dart';
+import 'package:flutter_application_1/features/payment/cubit/checkout_cubit.dart';
+
 import 'payment.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
-class CartScreen extends StatefulWidget {
-  final List<dynamic> cartItems;
-  final VoidCallback onCartChanged;
 
-  const CartScreen({
-    Key? key,
-    required this.cartItems,
-    required this.onCartChanged,
-  }) : super(key: key);
-
-  @override
-  _CartScreenState createState() => _CartScreenState();
-}
-
-class _CartScreenState extends State<CartScreen> {
-  late List<dynamic> _cartItems;
-
-  @override
-  void initState() {
-    super.initState();
-    _cartItems = List.from(widget.cartItems); // Make a mutable copy
-  }
-
-void updateQuantity(int index, int change) async {
-  final cartItem = _cartItems[index];
-  final cartItemId = cartItem['_id'];
-  final productId = cartItem['product']['_id'];
-  final newQuantity = cartItem['quantity'] + change;
-
-  // Prevent negative quantities
-  if (newQuantity < 0) return;
-
-  final url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app /api/cart/update');
-  final response = await http.put(
-    url,
-    headers: {'Content-Type': 'application/json'},
-    body: jsonEncode({
-      'cartItemId': cartItemId,
-      'quantityChange': change,
-    }),
-  );
-
-  if (response.statusCode == 200) {
-    final responseBody = json.decode(response.body);
-    print("Cart updated: $responseBody");
-
-    setState(() {
-      if (responseBody['message'] == "Item removed from cart" || newQuantity == 0) {
-        _cartItems.removeAt(index);
-      } else {
-        _cartItems[index]['quantity'] = newQuantity;
-      }
-    });
-
-    widget.onCartChanged(); // 🔁 Notify HomeScreen to refresh badge
-  } else {
-    print("Failed to update cart: ${response.body}");
-  }
-}
-
-  int get totalItems =>
-      _cartItems.fold<int>(0, (sum, item) => sum + (item['quantity'] as int));
-
-  double get grandTotal => _cartItems.fold<double>(
-      0.0,
-      (sum, item) =>
-          sum +
-          ((item['product']['price'] as num).toDouble() *
-              (item['quantity'] as int)));
+class CartScreen extends StatelessWidget {
+  const CartScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthBloc>().state;
+    final user = authState.user;
+
+    if (authState.status != AuthStatus.authenticated || user.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Your Cart')),
+        body: const Center(
+          child: Text('Login to view your cart'),
+        ),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Your Cart")),
-      body: _cartItems.isEmpty
-          ? const Center(
-              child: Text(
-                "🛒 No items in your cart",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
+      appBar: AppBar(title: const Text('Your Cart')),
+      body: BlocBuilder<CartBloc, CartState>(
+        builder: (context, state) {
+          if (state.status == CartStatus.loading && state.items.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state.status == CartStatus.failure) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  state.errorMessage ?? 'Failed to load cart',
+                  textAlign: TextAlign.center,
                 ),
               ),
-            )
-            
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "--- Cart Summary ---",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: _cartItems.length,
-                      itemBuilder: (context, index) {
-                        final item = _cartItems[index];
-                        final product = item['product'];
-                        final int quantity = item['quantity'];
-                        final double price =
-                            (product['price'] as num).toDouble();
-                        final double totalPrice = price * quantity;
+            );
+          }
 
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          elevation: 2,
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Product: ${product['name']}",
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                    "Quantity: ${product['quantity']['value']} ${product['quantity']['unit']}"),
-                                const SizedBox(height: 4),
-                                Image.network(
-                                  product['image'],
-                                  height: 100,
-                                  width: 100,
-                                  fit: BoxFit.contain,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                    "Price per item: \₹${price.toStringAsFixed(2)}"),
-                                Text("Total price: \₹${totalPrice.toStringAsFixed(2)}"),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      icon:
-                                          const Icon(Icons.remove_circle_outline),
-                                      onPressed: () =>
-                                          updateQuantity(index, -1),
-                                    ),
-                                    Text('$quantity'),
-                                    IconButton(
-                                      icon:
-                                          const Icon(Icons.add_circle_outline),
-                                      onPressed: () =>
-                                          updateQuantity(index, 1),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
+          if (state.items.isEmpty) {
+            return const Center(
+              child: Text(
+                'No items in your cart',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: state.items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final item = state.items[index];
+                    final itemUpdating = state.isUpdating &&
+                        state.pendingCartItemId == item.id;
+                    return _CartItemCard(
+                      item: item,
+                      isUpdating: itemUpdating,
+                      onIncrease: () {
+                        context.read<CartBloc>().add(
+                              CartItemQuantityChanged(
+                                userId: user.id,
+                                cartItemId: item.id,
+                                quantityChange: 1,
+                              ),
+                            );
                       },
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                 Row(
-  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  children: [
-    const Text(
-      'Missed something?',
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-    InkWell(
-  onTap: () {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (context) => HomeScreen(
-          token: '', // <- Replace with actual token if available
-          user: {},  // <- Replace with actual user map
-        ),
-      ),
-      (route) => false, // Removes all the previous routes, no back button
-    );
-  },
-  child: Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    decoration: BoxDecoration(
-      color: Colors.black,
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: const Row(
-      children: [
-        Icon(Icons.add, color: Colors.white, size: 18),
-        SizedBox(width: 6),
-        Text(
-          "Add More Items",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-        ),
-      ],
-    ),
-  ),
-)
-
-  ],
-),
-             const Divider(thickness: 1.5),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Left side: Totals
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("Total items in cart: $totalItems",
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 4),
-                            Text(
-                              "Grand total price: \₹${grandTotal.toStringAsFixed(2)}",
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
+                      onDecrease: () {
+                        context.read<CartBloc>().add(
+                              CartItemQuantityChanged(
+                                userId: user.id,
+                                cartItemId: item.id,
+                                quantityChange: -1,
+                              ),
+                            );
+                      },
+                    );
+                  },
+                ),
+              ),
+              _CartSummary(
+                totalItems: state.totalItems,
+                totalAmount: state.totalAmount,
+                isUpdating: state.isUpdating,
+                onCheckout: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MultiBlocProvider(
+                        providers: [
+                          BlocProvider.value(value: context.read<CartBloc>()),
+                          BlocProvider.value(value: context.read<CheckoutCubit>()),
+                        ],
+                        child: PaymentOptionScreen(user: user),
                       ),
-                      // Right side: Slide to Pay
-                Container(
-  width: 200,
-  height: 60,
- child: SlideAction(
-  onSubmit: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PaymentOptionScreen(
-          cartItems: _cartItems,
-          totalItems: totalItems,
-          grandTotal: grandTotal,
-        ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          );
+        },
       ),
     );
-          },
-          text: "         Slide to Pay",
-          textStyle: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-          outerColor: Colors.green.shade700,
-          innerColor: Colors.white,
-          elevation: 3,
-          sliderButtonIcon: const Icon(
-            Icons.payment,
-            size: 20, // 🔽 reduced size to prevent covering text
-            color: Colors.green,
-          ),
-            sliderRotate: false, // Prevents unnecessary icon rotation
-          borderRadius: 16,
-          height: 56,
-          alignment: Alignment.centerRight, // Optional: aligns the button nicely
-        ),
+  }
+}
 
-        ),
-        ]),
-        SizedBox(height: 35),
-                ],
+class _CartItemCard extends StatelessWidget {
+  const _CartItemCard({
+    required this.item,
+    required this.onIncrease,
+    required this.onDecrease,
+    required this.isUpdating,
+  });
+
+  final CartItemModel item;
+  final VoidCallback onIncrease;
+  final VoidCallback onDecrease;
+  final bool isUpdating;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item.product.name,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
             ),
+            if (item.product.formattedQuantity.isNotEmpty)
+              Text('Quantity: ${item.product.formattedQuantity}'),
+            const SizedBox(height: 8),
+            Text('Price: ₹${item.product.price.toStringAsFixed(2)}'),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline),
+                      onPressed: isUpdating ? null : onDecrease,
+                    ),
+                    Text(
+                      '${item.quantity}',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      onPressed: isUpdating ? null : onIncrease,
+                    ),
+                  ],
+                ),
+                Text(
+                  'Subtotal: ₹${item.totalPrice.toStringAsFixed(2)}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CartSummary extends StatelessWidget {
+  const _CartSummary({
+    required this.totalItems,
+    required this.totalAmount,
+    required this.isUpdating,
+    required this.onCheckout,
+  });
+
+  final int totalItems;
+  final double totalAmount;
+  final bool isUpdating;
+  final VoidCallback onCheckout;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        border: const Border(
+          top: BorderSide(color: Colors.black12),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Total items: $totalItems',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          Text(
+            'Grand total: ₹${totalAmount.toStringAsFixed(2)}',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: isUpdating ? null : onCheckout,
+              child: isUpdating
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Proceed to Checkout'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

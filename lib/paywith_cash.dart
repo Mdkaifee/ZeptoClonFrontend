@@ -1,218 +1,114 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'orders.dart';  // Import OrdersScreen
-import 'package:fluttertoast/fluttertoast.dart';
-import 'your_orders_screen.dart';  // Import YourOrdersScreen
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-class PayWithCashScreen extends StatefulWidget {
-  final List<dynamic> cartItems;  // Add cartItems
-  final int totalItems;
-  final double grandTotal;
+import 'package:flutter_application_1/features/auth/data/models/user_model.dart';
+import 'package:flutter_application_1/features/cart/bloc/cart_bloc.dart';
+import 'package:flutter_application_1/features/cart/bloc/cart_event.dart';
+import 'package:flutter_application_1/features/cart/data/models/cart_item_model.dart';
+import 'package:flutter_application_1/features/payment/cubit/checkout_cubit.dart';
+import 'package:flutter_application_1/features/payment/cubit/checkout_state.dart';
 
+import 'your_orders_screen.dart';
 
+class PayWithCashScreen extends StatelessWidget {
   const PayWithCashScreen({
-    Key? key,
+    super.key,
+    required this.user,
     required this.cartItems,
-    required this.totalItems,
-    required this.grandTotal,
-  }) : super(key: key);
+    required this.amount,
+  });
 
-  @override
-  State<PayWithCashScreen> createState() => _PayWithCashScreenState();
-}
-
-class _PayWithCashScreenState extends State<PayWithCashScreen> {
-  bool _payWithCashSelected = false;
-
-
-// Second declaration of _getUserId (duplicate)
-Future<String?> _getUserId() async {
-  final prefs = await SharedPreferences.getInstance();
-  String? userId = prefs.getString('userId');  // Retrieve stored userId
-  print("Fetched userId: $userId");  // Debugging log
-  return userId;
-}
-Future<void> _createOrder(String userId) async {
-  var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/orders');  // API URL to save the order
-
-  // Prepare order data to be sent to API
-  var orderData = {
-    'userId': userId,
-    'cartItems': widget.cartItems,
-    'totalAmount': widget.grandTotal,
-    'paymentStatus': 'COD',  // Cash on delivery
-    'orderStatus': 'Ordered',
-  };
-
-  try {
-    var response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(orderData),
-    );
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      var data = json.decode(response.body);
-      Fluttertoast.showToast(
-        msg: "Order placed successfully!",
-        backgroundColor: Colors.green,
-      );
-
-      // Clear cart items from the backend
-      await _clearCartItems(userId);
-
-      // Navigate to the YourOrdersScreen without passing any data
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const YourOrdersScreen(isFromPayWithCash: true), // Navigate to YourOrdersScreen
-        ),
-      );
-    } else {
-      Fluttertoast.showToast(
-        msg: "Failed to place the order.",
-        backgroundColor: Colors.red,
-      );
-    }
-  } catch (e) {
-    print("Error placing order: $e");
-    Fluttertoast.showToast(
-      msg: "Error placing order. Please try again.",
-      backgroundColor: Colors.red,
-    );
-  }
-}
-
-Future<void> _clearCartItems(String userId) async {
-  var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/cart/clear/$userId');  // Clear cart API endpoint
-
-  try {
-    var response = await http.delete(url);
-
-    if (response.statusCode == 200) {
-      // Success: Clear cart UI (optional, you can update your cart state here)
-      print("Cart cleared successfully.");
-    } else {
-      print("Failed to clear the cart.");
-    }
-  } catch (e) {
-    print("Error clearing cart: $e");
-  }
-}
+  final UserModel user;
+  final List<CartItemModel> cartItems;
+  final double amount;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Pay on Delivery"),
-        leading: BackButton(onPressed: () => Navigator.pop(context)),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Items: ${widget.totalItems}",
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              "Total Amount: ₹${widget.grandTotal.toStringAsFixed(2)}",
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const Divider(thickness: 1.5, height: 30),
-
-            // Cash Option
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.money),
-              title: const Text("Cash / Pay on Delivery"),
-              trailing: Radio<bool>(
-                value: true,
-                groupValue: _payWithCashSelected,
-                onChanged: (value) {
-                  setState(() {
-                    _payWithCashSelected = value!;
-                  });
-                },
+    return BlocConsumer<CheckoutCubit, CheckoutState>(
+      listener: (context, state) {
+        if (state.status == CheckoutStatus.success && state.lastOrder != null) {
+          context
+              .read<CartBloc>()
+              .add(CartRequested(userId: user.id));
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (_) => YourOrdersScreen(
+                userId: user.id,
+                initialOrder: state.lastOrder,
               ),
-              onTap: () {
-                setState(() {
-                  _payWithCashSelected = true;
-                });
-              },
             ),
-
-            const SizedBox(height: 20),
-
-            // Pay Button
-            if (_payWithCashSelected)
-             ElevatedButton(
-  onPressed: () async {
-    // Fetch userId from SharedPreferences
-    final userId = await _getUserId();
-
-    if (userId == null || userId.isEmpty) {
-      // If userId is null, show an error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("User not logged in")),
-      );
-      return;
-    }
-
-    // Show success modal dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false, // Prevent dismissing by tapping outside
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Order Successful!"),
-          content: Text(
-            "Cash payment of ₹${widget.grandTotal.toStringAsFixed(2)} will be collected on delivery.",
+            (route) => route.isFirst,
+          );
+        } else if (state.status == CheckoutStatus.failure &&
+            state.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.errorMessage!)),
+          );
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+          appBar: AppBar(title: const Text('Cash on Delivery')),
+          body: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Amount to be collected: ₹${amount.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Order Summary',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: cartItems.length,
+                    itemBuilder: (context, index) {
+                      final item = cartItems[index];
+                      return ListTile(
+                        title: Text(item.product.name),
+                        subtitle: Text('${item.quantity} × ₹${item.product.price}'),
+                        trailing: Text('₹${item.totalPrice.toStringAsFixed(2)}'),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: state.isProcessing
+                        ? null
+                        : () {
+                            context.read<CheckoutCubit>().placeOrder(
+                                  userId: user.id,
+                                  cartItems: cartItems,
+                                  totalAmount: amount,
+                                  paymentStatus: 'COD',
+                                );
+                          },
+                    child: state.isProcessing
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Confirm Order'),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
-    );
-
-    // Wait for 2 seconds before navigating
-    await Future.delayed(Duration(seconds: 2));
-
-    // Close the dialog automatically
-    Navigator.of(context).pop();
-
-    // Call API to create the order
-    await _createOrder(userId);
-  },
-  style: ElevatedButton.styleFrom(
-    backgroundColor: Colors.green.shade700,
-    foregroundColor: Colors.white,
-    minimumSize: const Size(double.infinity, 50),
-  ),
-  child: Text.rich(
-    TextSpan(
-      children: [
-        const TextSpan(
-          text: "Pay Amount with Cash  ",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        TextSpan(
-          text: "₹${widget.grandTotal.toStringAsFixed(2)}",
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-      ],
-    ),
-  ),
-)
-
-          ],
-        ),
-      ),
     );
   }
 }

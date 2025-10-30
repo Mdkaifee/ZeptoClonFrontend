@@ -1,240 +1,172 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'your_orders_screen.dart';  // Import YourOrdersScreen
-class PayWithRazorpayScreen extends StatefulWidget {
-  final double grandTotal;
-  final int totalItems;
-  final List<dynamic> cartItems;
 
+import 'package:flutter_application_1/features/auth/data/models/user_model.dart';
+import 'package:flutter_application_1/features/cart/bloc/cart_bloc.dart';
+import 'package:flutter_application_1/features/cart/bloc/cart_event.dart';
+import 'package:flutter_application_1/features/cart/data/models/cart_item_model.dart';
+import 'package:flutter_application_1/features/payment/cubit/checkout_cubit.dart';
+import 'package:flutter_application_1/features/payment/cubit/checkout_state.dart';
+
+import 'your_orders_screen.dart';
+
+class PayWithRazorpayScreen extends StatefulWidget {
   const PayWithRazorpayScreen({
-    Key? key,
-    required this.grandTotal,
-    required this.totalItems,
+    super.key,
+    required this.user,
+    required this.amount,
     required this.cartItems,
-  }) : super(key: key);
+  });
+
+  final UserModel user;
+  final double amount;
+  final List<CartItemModel> cartItems;
 
   @override
   State<PayWithRazorpayScreen> createState() => _PayWithRazorpayScreenState();
 }
 
 class _PayWithRazorpayScreenState extends State<PayWithRazorpayScreen> {
-  late Razorpay _razorpay;
+  late final Razorpay _razorpay;
+  bool _paymentInitiated = false;
 
   @override
   void initState() {
     super.initState();
-    _razorpay = Razorpay();
-
-    // Listen for payment success and failure (including cancellations)
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError); // For failures and cancellations
+    _razorpay = Razorpay()
+      ..on(Razorpay.EVENT_PAYMENT_SUCCESS, _handleSuccess)
+      ..on(Razorpay.EVENT_PAYMENT_ERROR, _handleError);
   }
 
   @override
   void dispose() {
+    _razorpay.clear();
     super.dispose();
-    _razorpay.clear();  // Clean up Razorpay instance
   }
-  // Handle payment success
-void _handlePaymentSuccess(PaymentSuccessResponse response) async {
-  print("Payment Success: ${response.paymentId}");
 
-  final prefs = await SharedPreferences.getInstance();
-  final userId = prefs.getString('userId');
-
-  try {
-    // Create order in backend with payment status 'Paid'
-    var orderResponse = await http.post(
-      Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/orders/'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'userId': userId,
-        'cartItems': widget.cartItems,
-        'totalAmount': widget.grandTotal,
-        'paymentStatus': 'Paid',
-        'orderStatus': 'Ordered'
-      }),
-    );
-
-    if (orderResponse.statusCode == 201) {
-      print("🟢 [Frontend] Order created successfully after payment success");
-
-      // Clear cart items using API
-      await _clearCartItems(userId!);
- // Show the success dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false, // Prevent dismissing by tapping outside
-        builder: (context) {
-          return const AlertDialog(
-            title: Text("Order Successful!"),
-            content: Text(
-              "Your order will be delivered shortly. Thank you for choosing QuickBasket.",
-            ),
-          );
-        },
+  Future<void> _initiatePayment(BuildContext context) async {
+    if (_paymentInitiated) return;
+    _paymentInitiated = true;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final checkoutCubit = context.read<CheckoutCubit>();
+      final orderId = await checkoutCubit.createRazorpayOrder(
+        amount: widget.amount,
+        userId: widget.user.id,
       );
+      final options = {
+        'key': 'rzp_test_eR5i8vZrGKVnEB',
+        'amount': (widget.amount * 100).toInt().toString(),
+        'name': 'Kaifee Quick Mart',
+        'description': 'Order payment',
+        'order_id': orderId,
+        'prefill': {
+          'contact': widget.user.mobile ?? '',
+          'email': widget.user.email,
+        },
+        'theme': {'color': '#00A859'},
+      };
+      _razorpay.open(options);
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Unable to start payment: $error')),
+      );
+    } finally {
+      _paymentInitiated = false;
+    }
+  }
 
-      // Wait for 2 seconds before navigating
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Close dialog explicitly before navigating
-      Navigator.pop(context);
-      // Navigate to YourOrdersScreen after creating order successfully
-      Navigator.pushReplacement(
+  void _handleSuccess(PaymentSuccessResponse response) {
+    final checkoutCubit = context.read<CheckoutCubit>();
+    checkoutCubit
+        .placeOrder(
+          userId: widget.user.id,
+          cartItems: widget.cartItems,
+          totalAmount: widget.amount,
+          paymentStatus: 'Paid',
+        )
+        .then((order) {
+      if (!mounted) return;
+      context
+          .read<CartBloc>()
+          .add(CartRequested(userId: widget.user.id));
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (context) => const YourOrdersScreen(isFromPayWithRazorpay: true), 
+          builder: (_) => YourOrdersScreen(
+            userId: widget.user.id,
+            initialOrder: order,
+          ),
         ),
+        (route) => route.isFirst,
       );
-    } else {
-      print("🔴 [Frontend] Failed to create order after payment. Response: ${orderResponse.body}");
-    }
-  } catch (e) {
-    print("🔴 [Frontend] Exception during order creation after payment success: $e");
-  }
-}
-
-// Add the _clearCartItems method to your PayWithRazorpayScreen:
-Future<void> _clearCartItems(String userId) async {
-  var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/cart/clear/$userId');
-
-  try {
-    var response = await http.delete(url);
-
-    if (response.statusCode == 200) {
-      print("🟢 Cart cleared successfully.");
-    } else {
-      print("🔴 Failed to clear the cart.");
-    }
-  } catch (e) {
-    print("🔴 Error clearing cart: $e");
-  }
-}
-
-  // Handle payment error (including cancellations)
-  void _handlePaymentError(PaymentFailureResponse response) {
-    print("Payment Failure or Canceled: ${response.message}");
-    // Show an error or cancellation message to the user
+    }).catchError((error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to confirm payment: $error')),
+      );
+    });
   }
 
-Future<String> _createOrderOnBackend() async {
-  final url = 'https://5e0c1fb67d19.ngrok-free.app/api/payment/create-order';
-
-  final amountInPaise = (widget.grandTotal * 100).toInt();
-  print("🔵 [Frontend] Initiating backend order creation with amount: $amountInPaise paise");
-
-  final prefs = await SharedPreferences.getInstance();
-  final userId = prefs.getString('userId');
-
-  print("🔵 [Frontend] Fetched User ID from SharedPreferences: $userId");
-
-  try {
-    var response = await http.post(
-      Uri.parse(url),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'amount': amountInPaise,
-        'userId': userId,  // Pass the userId here
-      }),
+  void _handleError(PaymentFailureResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(response.message ?? 'Payment cancelled')),
     );
-
-    print("🟡 [Frontend] Received response status: ${response.statusCode}");
-    print("🟡 [Frontend] Response body: ${response.body}");
-
-    if (response.statusCode == 200) {
-      var orderData = json.decode(response.body);
-      print("🟢 [Frontend] Order ID from backend: ${orderData['orderId']}");
-
-      return orderData['orderId'];
-    } else {
-      print("🔴 [Frontend] Failed to create Razorpay order. Response: ${response.body}");
-      throw Exception('Failed to create Razorpay order');
-    }
-  } catch (e) {
-    print("🔴 [Frontend] Exception during order creation: $e");
-    throw Exception('Failed to create Razorpay order');
-  }
-}
-  // Function to initiate Razorpay payment
-  void _initiateRazorpayPayment() async {
-    try {
-      // Step 1: Create order on backend and get orderId
-      String orderId = await _createOrderOnBackend();
-
-      var options = {
-  'key': 'rzp_test_eR5i8vZrGKVnEB',  // Your Razorpay key_id
-  'amount': (widget.grandTotal * 100).toInt().toString(),  // Amount in paise (integer)
-  'name': 'Kaifee Quick Mart',
-  'description': 'Purchase from Your Store',
-  'order_id': orderId,  // Use the orderId received from the backend
-  'prefill': {
-    'contact': '7982472309',
-    'email': 'mdkaifee8298@gmail.com',
-  },
-  'theme': {
-    'color': '#00A859',
-  },
-};
-
-      // Step 2: Open Razorpay payment gateway
-      _razorpay.open(options);
-    } catch (e) {
-      print("Error opening Razorpay: $e");
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Pay with Razorpay"),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title
-            const Text(
-              "Review Your Payment",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-
-            // Total Items and Total Amount
-            Text(
-              "Items: ${widget.totalItems}",
-              style: const TextStyle(fontSize: 18),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Total Amount: ₹${widget.grandTotal.toStringAsFixed(2)}",
-              style: const TextStyle(fontSize: 18),
-            ),
-            const Divider(thickness: 1.5),
-
-            // Spacer
-            const Spacer(),
-
-            // Pay Now Button
-            ElevatedButton(
-              onPressed: _initiateRazorpayPayment,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade700, // Button background color
-                minimumSize: const Size(double.infinity, 50), // Full width button
-              ),
-              child: const Text(
-                "Pay Now",
+    return BlocListener<CheckoutCubit, CheckoutState>(
+      listener: (context, state) {
+        if (state.status == CheckoutStatus.failure &&
+            state.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.errorMessage!)),
+          );
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Pay with Razorpay')),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Review Your Payment',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-            ),
-            
-            const SizedBox(height: 30),
-          ],
+              const SizedBox(height: 12),
+              Text(
+                'Amount: ₹${widget.amount.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: widget.cartItems.length,
+                  itemBuilder: (context, index) {
+                    final item = widget.cartItems[index];
+                    return ListTile(
+                      title: Text(item.product.name),
+                      subtitle: Text('${item.quantity} × ₹${item.product.price}'),
+                      trailing:
+                          Text('₹${item.totalPrice.toStringAsFixed(2)}'),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => _initiatePayment(context),
+                  child: const Text('Pay Now'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

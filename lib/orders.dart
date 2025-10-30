@@ -1,20 +1,11 @@
 import 'package:flutter/material.dart';
 
-class OrdersScreen extends StatelessWidget {
-  final List<dynamic> cartItems;
-  final int totalItems;
-  final double grandTotal;
-  final String paymentStatus;  // New field for payment status
-  final String itemStatus;     // New field for item status
+import 'package:flutter_application_1/features/orders/data/models/order_model.dart';
 
-  const OrdersScreen({
-    Key? key,
-    required this.cartItems,
-    required this.totalItems,
-    required this.grandTotal,
-    required this.paymentStatus,
-    required this.itemStatus,
-  }) : super(key: key);
+class OrdersScreen extends StatelessWidget {
+  const OrdersScreen({super.key, required this.order});
+
+  final OrderModel order;
 
   @override
   Widget build(BuildContext context) {
@@ -24,62 +15,47 @@ class OrdersScreen extends StatelessWidget {
         leading: BackButton(onPressed: () => Navigator.pop(context)),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Order Summary",
+              'Order Summary',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Expanded(
               child: ListView.builder(
-                itemCount: cartItems.length,
+                itemCount: order.items.length,
                 itemBuilder: (context, index) {
-                  final item = cartItems[index];
-                  final product = item['product'];
-                  final int quantity = item['quantity'];
-                  final double price = (product['price'] as num).toDouble();
-                  final double totalPrice = price * quantity;
-
+                  final item = order.items[index];
                   return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("Product: ${product['name']}",
-                              style: const TextStyle(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          Text("Quantity: $quantity"),
-                          const SizedBox(height: 4),
-                          Text("Price per item: ₹${price.toStringAsFixed(2)}"),
-                          Text("Total price: ₹${totalPrice.toStringAsFixed(2)}"),
-                        ],
+                    child: ListTile(
+                      title: Text(item.product.name),
+                      subtitle: Text(
+                        '${item.quantity} × ₹${item.product.price.toStringAsFixed(2)}',
+                      ),
+                      trailing: Text(
+                        '₹${item.totalPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                   );
                 },
               ),
             ),
-            const Divider(thickness: 1.5),
-            Text("Total items: $totalItems",
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text("Grand Total: ₹${grandTotal.toStringAsFixed(2)}",
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-
-            // ------------------- Payment Status -------------------
-            Text("Payment Status: $paymentStatus",
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-
-            // ------------------- Item Status -------------------
-            Text("Item Status: $itemStatus",
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            const Divider(),
+            Text(
+              'Total items: ${order.items.length}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            Text(
+              'Grand total: ₹${order.totalAmount.toStringAsFixed(2)}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Text('Payment Status: ${order.paymentStatus}'),
+            Text('Order Status: ${order.orderStatus}'),
           ],
         ),
       ),

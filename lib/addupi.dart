@@ -5,10 +5,10 @@ class AddUpiScreen extends StatelessWidget {
   final double grandTotal;
 
   const AddUpiScreen({
-    Key? key,
+    super.key,
     required this.totalItems,
     required this.grandTotal,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

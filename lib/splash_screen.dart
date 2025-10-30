@@ -1,57 +1,47 @@
 import 'package:flutter/material.dart';
-import 'register_page.dart';  // Ensure you import the RegisterScreen
-import 'home_screen.dart';  // Import your HomeScreen here
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-class SplashScreen extends StatefulWidget {
+import 'package:flutter_application_1/core/routes/app_routes.dart';
+import 'package:flutter_application_1/features/auth/bloc/auth_bloc.dart';
+import 'package:flutter_application_1/features/auth/bloc/auth_state.dart';
+
+class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
-  @override
-  _SplashScreenState createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    _navigateToNext();
-  }
-
-  void _navigateToNext() async {
-    await Future.delayed(const Duration(seconds: 2));  // Wait for 2 seconds
-
-    // Here you would check if the user is logged in
-    bool isLoggedIn = await _checkIfLoggedIn();  // Placeholder for login check
-
-    if (isLoggedIn) {
-      // Fetch user data or token that you have stored in your preferences or a secure place
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      String token = prefs.getString('userToken') ?? '';
-      Map<String, dynamic> user = {};  // Retrieve user details as needed
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomeScreen(token: token, user: user)),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => RegisterPage()),
-      );
-    }
-  }
-Future<bool> _checkIfLoggedIn() async {
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
-  return prefs.getBool('isLoggedIn') ?? false;
-}
+  static const routeName = AppRoutes.splash;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Text(
-          'Splash Screen',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+    return BlocListener<AuthBloc, AuthState>(
+      listenWhen: (previous, current) => previous.status != current.status,
+      listener: (context, state) async {
+        if (state.status == AuthStatus.authenticated) {
+          await Future<void>.delayed(const Duration(milliseconds: 400));
+          if (!context.mounted) return;
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRoutes.home,
+            (_) => false,
+          );
+        } else if (state.status == AuthStatus.unauthenticated) {
+          await Future<void>.delayed(const Duration(milliseconds: 400));
+          if (!context.mounted) return;
+          Navigator.pushReplacementNamed(context, AppRoutes.login);
+        }
+      },
+      child: const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text(
+                'Loading...',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -6,30 +6,24 @@ import 'package:flutter_application_1/features/auth/bloc/auth_bloc.dart';
 import 'package:flutter_application_1/features/auth/bloc/auth_event.dart';
 import 'package:flutter_application_1/features/auth/bloc/auth_state.dart';
 
-class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
-  static const routeName = AppRoutes.register;
+  static const routeName = AppRoutes.login;
 
   @override
-  State<RegisterPage> createState() => _RegisterPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage> {
+class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _mobileController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
 
   @override
   void dispose() {
-    _nameController.dispose();
     _emailController.dispose();
-    _mobileController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -37,43 +31,30 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Register'),
+        title: const Text('Login'),
         automaticallyImplyLeading: false,
       ),
       body: BlocListener<AuthBloc, AuthState>(
         listenWhen: (previous, current) => previous.status != current.status,
         listener: (context, state) {
-          if (state.status == AuthStatus.registrationSuccess) {
-            if (state.infoMessage != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.infoMessage!)),
-              );
-            }
-            Navigator.pushReplacementNamed(context, AppRoutes.login);
+          if (state.status == AuthStatus.authenticated) {
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              AppRoutes.home,
+              (_) => false,
+            );
           } else if (state.status == AuthStatus.failure &&
               state.errorMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.errorMessage!)),
-            );
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text(state.errorMessage!)));
           }
         },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
           child: Form(
             key: _formKey,
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Name'),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
                 TextFormField(
                   controller: _emailController,
                   decoration: const InputDecoration(labelText: 'Email'),
@@ -83,21 +64,6 @@ class _RegisterPageState extends State<RegisterPage> {
                     }
                     if (!value.contains('@')) {
                       return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _mobileController,
-                  decoration: const InputDecoration(labelText: 'Mobile Number'),
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your mobile number';
-                    }
-                    if (value.length != 10) {
-                      return 'Enter a valid 10-digit mobile number';
                     }
                     return null;
                   },
@@ -117,23 +83,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _confirmPasswordController,
-                  decoration:
-                      const InputDecoration(labelText: 'Confirm Password'),
-                  obscureText: true,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please confirm your password';
-                    }
-                    if (value != _passwordController.text) {
-                      return 'Passwords do not match';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
                 BlocBuilder<AuthBloc, AuthState>(
                   buildWhen: (previous, current) =>
                       previous.status != current.status,
@@ -147,10 +97,8 @@ class _RegisterPageState extends State<RegisterPage> {
                             : () {
                                 if (_formKey.currentState!.validate()) {
                                   context.read<AuthBloc>().add(
-                                        AuthRegistrationSubmitted(
-                                          name: _nameController.text.trim(),
+                                        AuthLoginSubmitted(
                                           email: _emailController.text.trim(),
-                                          mobile: _mobileController.text.trim(),
                                           password:
                                               _passwordController.text.trim(),
                                         ),
@@ -163,25 +111,25 @@ class _RegisterPageState extends State<RegisterPage> {
                                 width: 20,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Text('Register'),
+                            : const Text('Login'),
                       ),
                     );
                   },
                 ),
                 const SizedBox(height: 16),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Already have an account? '),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text("Don't have an account? "),
                     TextButton(
                       onPressed: () {
                         Navigator.pushReplacementNamed(
                           context,
-                          AppRoutes.login,
+                          AppRoutes.register,
                         );
                       },
                       child: const Text(
-                        'Login',
+                        'Register',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),

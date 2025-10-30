@@ -1,734 +1,551 @@
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_application_1/cart.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:flutter_application_1/core/routes/app_routes.dart';
+import 'package:flutter_application_1/features/auth/bloc/auth_bloc.dart';
+import 'package:flutter_application_1/features/auth/bloc/auth_event.dart';
+import 'package:flutter_application_1/features/auth/bloc/auth_state.dart';
+import 'package:flutter_application_1/features/auth/data/models/user_model.dart';
+import 'package:flutter_application_1/features/cart/bloc/cart_bloc.dart';
+import 'package:flutter_application_1/features/cart/bloc/cart_event.dart';
+import 'package:flutter_application_1/features/cart/bloc/cart_state.dart';
+import 'package:flutter_application_1/features/catalog/cubit/catalog_cubit.dart';
+import 'package:flutter_application_1/features/catalog/cubit/catalog_state.dart';
+import 'package:flutter_application_1/features/catalog/data/models/product_model.dart';
+import 'package:flutter_application_1/features/orders/cubit/orders_cubit.dart';
+import 'package:flutter_application_1/features/payment/cubit/checkout_cubit.dart';
+import 'package:flutter_application_1/features/payment/cubit/checkout_state.dart';
+import 'package:flutter_application_1/register_page.dart';
+
+import 'cart.dart';
 import 'your_orders_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  final String token;
-  final Map user;
-  // final bool showBackButton;
-  const HomeScreen({super.key, required this.token, required this.user,});
+  const HomeScreen({super.key});
+
+  static const routeName = AppRoutes.home;
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  String _appBarTitle = "Home Screen";
-  late Map _user;
-  Map<String, int> productQuantities = {}; 
-  Map<String, String> cartItems = {}; 
-  Map<String, String> productIdToCartItemId = {};
-  List<dynamic> products = [];
- List<dynamic> _cartItems = []; // This stores the full cart response from server
-
+  late final TabController _tabController;
+  bool _cartRequested = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(_updateAppBarTitle);
-    _user = Map.from(widget.user); // Make a copy to manage locally.
-  _appBarTitle = _tabController.index == 0 ? "Hi, ${_user['name']}" : "Account Screen";
-  _loadUserData();
-  _fetchProducts();
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_updateAppBarTitle);
     _tabController.dispose();
     super.dispose();
   }
-void _loadUserData() async {
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
-  String userDataJson = prefs.getString('userData') ?? '{}';
-  Map user = json.decode(userDataJson);
-
-  print("Loaded User Data: $user");
-
-  setState(() {
-    _user = user;
-    _appBarTitle = _tabController.index == 0
-        ? "Hi, ${_user['name'] ?? 'Guest'}"
-        : "Account Screen";
-  });
-
-  _fetchCartItems(); // ✅ Call this AFTER user is loaded
-}
-
-Future<void> _fetchProducts() async {
-  var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/products');
-  try {
-    var response = await http.get(url);
-    print("API Response Status: ${response.statusCode}");
-    if (response.statusCode == 200) {
-      var responseBody = json.decode(response.body);
-      print("Products Data: $responseBody");
-      setState(() {
-        products = responseBody;
-      });
-    } else {
-      print("Failed to fetch products: ${response.body}");
-      Fluttertoast.showToast(
-        msg: "Failed to fetch products",
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0,
-      );
-    }
-  } catch (e) {
-    print("Error fetching products: $e");
-    Fluttertoast.showToast(
-      msg: "Error fetching products: $e",
-      backgroundColor: Colors.red,
-      textColor: Colors.white,
-      fontSize: 16.0,
-    );
-  }
-}
-Future<void> _fetchCartItems() async {
-  final userId = _user['id'] ?? _user['_id'];
-
-  if (userId == null || userId.toString().isEmpty) {
-    print("User ID is null or empty. Cannot fetch cart.");
-    return;
-  }
-
-  final url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/cart/user/$userId');
-  print("Fetching cart for user: $userId");
-
-  try {
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      List<dynamic> cartData = json.decode(response.body);
-
-      // ✅ CLEAR OLD STATE before reassigning
-      setState(() {
-        _cartItems = cartData;
-        productQuantities.clear(); // ✅ This fixes stale `productQuantities`
-        productIdToCartItemId.clear();
-
-        for (var item in cartData) {
-          final String productId = item['product']['_id'];
-          final int quantity = item['quantity'];
-          final String cartItemId = item['_id'];
-
-          productQuantities[productId] = quantity;
-          productIdToCartItemId[productId] = cartItemId;
-        }
-      });
-
-      print("Cart loaded successfully: $cartData");
-
-      // Debugging summary (optional)
-      double grandTotal = 0.0;
-      int totalItems = 0;
-      for (var item in cartData) {
-        final product = item['product'];
-        final int quantityInCart = item['quantity'];
-        final double price = (product['price'] as num).toDouble();
-        final double totalPrice = price * quantityInCart;
-
-        final name = product['name'];
-        final quantityValue = product['quantity']['value'].toString();
-        final quantityUnit = product['quantity']['unit'];
-        final imageUrl = product['image'];
-
-        print("\nProduct: $name");
-        print(" - Quantity: $quantityValue $quantityUnit");
-        print(" - Image URL: $imageUrl");
-        print(" - Price per item: \$${price.toStringAsFixed(2)}");
-        print(" - Quantity in cart: $quantityInCart");
-        print(" - Total price: \$${totalPrice.toStringAsFixed(2)}");
-
-        grandTotal += totalPrice;
-        totalItems += quantityInCart;
-      }
-
-      print("\nTotal items in cart: $totalItems");
-      print("Grand total price: \$${grandTotal.toStringAsFixed(2)}");
-      print("----------------------\n");
-    } else {
-      print("Failed to load cart items: ${response.body}");
-    }
-  } catch (e) {
-    print("Error fetching cart items: $e");
-  }
-}
-
-   Future<void> _logoutUser() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('isLoggedIn');  // Remove login state
-    await prefs.remove('userToken');   // Remove user token
-    await prefs.remove('userData');    // Remove user data (if stored)
-  }
-void _updateAppBarTitle() {
-  if (!_tabController.indexIsChanging) {
-    setState(() {
-      _appBarTitle = _tabController.index == 0 ? "Hi, ${_user['name'] ?? 'Guest'}" : "Account Screen";
-    });
-  }
-}
-
-  void updateUser(Map updatedUser) {
-    setState(() {
-      _user = updatedUser; // Update the local user with new data.
-    });
-  }
-bool isAddingToCart = false;
-
-void addToCart(String userId, String productId, int quantity) async {
-  if (isAddingToCart) {
-    print("Request is already in progress.");
-    return;
-  }
-
-  try {
-    isAddingToCart = true;
-    var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/cart/add');
-    var response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode({
-        'userId': userId,
-        'productId': productId,
-        'quantity': quantity
-      }),
-    );
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      var responseBody = jsonDecode(response.body);
-      if ((responseBody['message'] == 'Item quantity updated in cart' || 
-           responseBody['message'] == 'Item added to cart') && responseBody['cartItemId'] != null) {
-
-        // Store the cartItemId immediately after adding/updating
-        storeCartItemId(productId, responseBody['cartItemId']);
-
-        print("Success: ${responseBody['message']}, Cart Item ID: ${responseBody['cartItemId']}");
-      await _fetchCartItems();
-      } else {
-        print("Failed to store Cart Item ID. Response: ${responseBody['message']}");
-      }
-    } else {
-      print('Failed to add item to cart, Response: ${response.body}');
-    }
-  } finally {
-    isAddingToCart = false;
-  }
-}
-Future<void> updateCart(String cartItemId, int quantityChange, int fallbackQuantity, String productId) async {
-  print("Attempting to update cart with ID: $cartItemId");  // Log the ID being sent
-
-  var url = Uri.parse('http://localhost:5000/api/cart/update');
-  var response = await http.put(
-    url,
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body: jsonEncode({
-      'cartItemId': cartItemId,
-      'quantityChange': quantityChange,
-    }),
-  );
-
-  if (response.statusCode == 200) {
-    var responseBody = jsonDecode(response.body);
-    print("Update successful: $responseBody");
-
-    // Handle item removal case
-    if (responseBody['message'] == "Item removed from cart") {
-      setState(() {
-        productQuantities.remove(productId);
-        productIdToCartItemId.remove(productId);
-      });
-    }
-    await _fetchCartItems();
-  } else {
-    print("Failed to update cart: ${response.body}");
-    setState(() {
-      productQuantities[productId] = fallbackQuantity;
-    });
-  }
-}
-
-void incrementQuantity(String productId) {
-  setState(() {
-    productQuantities[productId] = (productQuantities[productId] ?? 0) + 1;
-  });
-  if (_user != null && _user['id'] != null) {
-    addToCart(_user['id'], productId, 1);
-  }
-}
-void storeCartItemId(String productId, String cartItemId) {
-  productIdToCartItemId[productId] = cartItemId;
-}
-
-Future<void> decrementQuantity(String productId, String cartItemId) async {
-  int currentQuantity = productQuantities[productId] ?? 0;
-
-  if (currentQuantity > 0) {
-    int newQuantity = currentQuantity - 1;
-
-    // Log before updating
-    print("Attempting to decrement cart item: $cartItemId");
-    print("Current Quantity: $currentQuantity, New Quantity: $newQuantity");
-
-    setState(() {
-      if (newQuantity == 0) {
-        // If quantity becomes zero, remove the item from the UI
-        productQuantities.remove(productId);  // Remove the key for the product
-        productIdToCartItemId.remove(productId);  // Also remove the cartItemId
-      } else {
-        productQuantities[productId] = newQuantity;  // Decrement quantity in UI
-      }
-    });
-
-    // Call API to update the cart quantity (decrease by 1)
-    var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/cart/update');
-    var response = await http.put(url, 
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode({
-        'cartItemId': cartItemId,
-        'quantityChange': -1,  // Decrease quantity by 1
-      })
-    );
-
-    if (response.statusCode == 200) {
-      var responseBody = jsonDecode(response.body);
-      Fluttertoast.showToast(
-        msg: responseBody['message'],
-        backgroundColor: Colors.green,
-        textColor: Colors.white,
-        fontSize: 16.0,
-      );
-      
-      // Reload cart after item removal or quantity update
-      await _fetchCartItems();
-    } else {
-      Fluttertoast.showToast(
-        msg: "Failed to update cart",
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0,
-      );
-    }
-  } else {
-    print("Quantity already at zero, cannot decrement further.");
-  }
-}
-int _getTotalItems() {
-  int total = 0;
-  for (var item in _cartItems) {
-    total += item['quantity'] as int;
-  }
-  return total;
-}
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-appBar: AppBar(
-  title: Text(_appBarTitle),
-  leading: null,  // Prevent the back button
-  actions: [
-    Stack(
-      children: [
-        IconButton(
-          icon: const Icon(Icons.shopping_cart),
-          onPressed: () async {
-            await _fetchCartItems();
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => CartScreen(cartItems: _cartItems, onCartChanged: _fetchCartItems),
-              ),
-            );
-            await _fetchCartItems();
-            setState(() {});
-          },
-        ),
-        if (_cartItems.isNotEmpty)
-          Positioned(
-            right: 6,
-            top: 0,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              constraints: const BoxConstraints(
-                minWidth: 20,
-                minHeight: 20,
-              ),
-              child: Text(
-                _getTotalItems().toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _maybeFetchCart();
+  }
+
+  void _maybeFetchCart() {
+    if (_cartRequested) return;
+    final authState = context.read<AuthBloc>().state;
+    final user = authState.user;
+    if (authState.status == AuthStatus.authenticated && user.isNotEmpty) {
+      context.read<CartBloc>().add(CartRequested(userId: user.id));
+      _cartRequested = true;
+    }
+  }
+
+  void _addToCart(String productId) {
+    final authState = context.read<AuthBloc>().state;
+    final user = authState.user;
+    if (authState.status != AuthStatus.authenticated || user.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login to add items to cart')),
+      );
+      Navigator.pushReplacementNamed(context, RegisterPage.routeName);
+      return;
+    }
+
+    context.read<CartBloc>().add(
+          CartItemAdded(
+            userId: user.id,
+            productId: productId,
           ),
-      ],
-    ),
-  ],
+        );
+  }
 
-
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: [Tab(text: "Home"), Tab(text: "Account")],
-        ),
-      ),
-    body: TabBarView(
-      controller: _tabController,
-      children: [
-        // Home tab content
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Text("Name: ${_user['name']}"),
-              // Text("Email: ${_user['email']}"),
-              // Text("Mobile: ${_user['mobile']}"),
-              // Text("userId: ${_user['id']}"),
-              Expanded(
-    child: GridView.builder(
-  padding: const EdgeInsets.all(10),
-  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-    crossAxisCount: 2,
-    crossAxisSpacing: 10,
-    mainAxisSpacing: 10,
-    childAspectRatio: 0.8,
-  ),
-  itemCount: products.length,
-  itemBuilder: (context, index) {
-    String productId = products[index]['_id'];
-    int currentQuantity = productQuantities[productId] ?? 0;
-    return Card(
-  elevation: 5,
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.center,
-    children: [
-      Image.network(
-        products[index]['image'],
-        height: 120,
-        width: double.infinity,
-        fit: BoxFit.cover,
-      ),
-      Padding(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          children: [
-            Text(products[index]['name']),
-            Text('₹${products[index]['price']}'),
-
-            // ✅ RE-COMPUTE `currentQuantity` RIGHT BEFORE DISPLAY
-            Builder(
-              builder: (context) {
-                int currentQuantity = productQuantities[productId] ?? 0;
-
-                return currentQuantity > 0
-                    ? Row(
-  mainAxisAlignment: MainAxisAlignment.center,
-  children: [
-    IconButton(
-      icon: Icon(Icons.remove),
-      onPressed: () {
-        String cartItemId = productIdToCartItemId[productId] ?? '';
-        if (cartItemId.isNotEmpty) {
-          decrementQuantity(productId, cartItemId);
-        }
-      },
-    ),
-    Text('$currentQuantity'),
-    IconButton(
-      icon: Icon(Icons.add),
-      onPressed: () => incrementQuantity(productId),
-    ),
-  ],
-)
-
-                    : ElevatedButton(
-                        onPressed: _user['id'] != null
-                            ? () {
-                                incrementQuantity(productId);
-                                int quantity =
-                                    productQuantities[productId] ?? 0;
-                                addToCart(
-                                    _user['id'], productId, quantity);
-                              }
-                            : null,
-                        child: Text('Add to Cart'),
-                      );
-              },
-            )
-          ],
-        ),
-      )
-    ],
-  ),
-);
-
-  },
-
-    ))
-           ],
-          ),
-        ),
-          // Account tab content
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton.icon(
-                  icon: Icon(Icons.edit),
-                  label: Text("Edit Profile"),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (context) => EditProfileScreen(
-                              user: _user,
-                              updateUser: updateUser,
-                            ),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Colors.blue,
-                  ),
-                ),
-                SizedBox(height: 20),
-                ElevatedButton.icon(
-  icon: Icon(Icons.list),
-  label: Text("View Orders"),
-  onPressed: () {
-    // Navigate to YourOrdersScreen, no need to pass orders data anymore
+  void _openCart() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const YourOrdersScreen(),  // No need to pass data
+        builder: (_) => BlocProvider.value(
+          value: context.read<CartBloc>(),
+          child: const CartScreen(),
+        ),
       ),
     );
-  },
-  style: ElevatedButton.styleFrom(
-    foregroundColor: Colors.white,
-    backgroundColor: Colors.green,
-  ),
-),
+  }
 
+  void _openOrders(UserModel user) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: context.read<OrdersCubit>()),
+          ],
+          child: YourOrdersScreen(userId: user.id),
+        ),
+      ),
+    );
+  }
 
-                SizedBox(height: 20),
-                ElevatedButton.icon(
-                  icon: Icon(Icons.logout),
-                  label: Text("Logout"),
-                  onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: Text("Logout"),
-                        content: Text("Are you sure you want to logout?"),
-                        actions: <Widget>[
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: Text("No"),
-                          ),
-                          TextButton(
-                            onPressed: () async {
-                              await _logoutUser();
-                              Navigator.of(context).pop();
-                              Navigator.of(context).pushNamedAndRemoveUntil(
-                                '/loginPage', // You might need to navigate to the splash screen or login page directly
-                                (Route<dynamic> route) => false,
-                              );
-                              Fluttertoast.showToast(
-                                msg: "User logged out successfully",
-                                toastLength: Toast.LENGTH_SHORT,
-                                gravity: ToastGravity.BOTTOM,
-                                timeInSecForIosWeb: 1,
-                                backgroundColor: Colors.red,
-                                textColor: Colors.white,
-                                fontSize: 16.0,
-                              );
-                            },
-                            child: Text("Yes"),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Colors.red,
-                  ),
+  Future<void> _showEditProfileDialog(UserModel user) async {
+    final nameController = TextEditingController(text: user.name);
+    final mobileController = TextEditingController(text: user.mobile ?? '');
+    final formKey = GlobalKey<FormState>();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Profile'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Name'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Name is required';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: mobileController,
+                  decoration: const InputDecoration(labelText: 'Mobile'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Mobile number is required';
+                    }
+                    if (value.length != 10) {
+                      return 'Enter a valid 10-digit number';
+                    }
+                    return null;
+                  },
                 ),
               ],
             ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  context.read<AuthBloc>().add(
+                        AuthProfileUpdated(
+                          userId: user.id,
+                          name: nameController.text.trim(),
+                          mobile: mobileController.text.trim(),
+                        ),
+                      );
+                  Navigator.of(context).pop(true);
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted) return;
+
+    if (result ?? false) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Updating profile...')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<AuthBloc, AuthState>(
+          listenWhen: (previous, current) =>
+              previous.status != current.status ||
+              previous.infoMessage != current.infoMessage ||
+              previous.errorMessage != current.errorMessage,
+          listener: (context, state) {
+            if (state.status == AuthStatus.unauthenticated) {
+              _cartRequested = false;
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.login,
+                (route) => false,
+              );
+            } else if (state.status == AuthStatus.failure &&
+                state.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.errorMessage!)),
+              );
+            } else if (state.infoMessage != null &&
+                state.infoMessage!.isNotEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.infoMessage!)),
+              );
+            }
+
+            if (state.status == AuthStatus.authenticated) {
+              _cartRequested = false;
+              _maybeFetchCart();
+            }
+          },
+        ),
+        BlocListener<CartBloc, CartState>(
+          listenWhen: (previous, current) =>
+              previous.infoMessage != current.infoMessage ||
+              previous.errorMessage != current.errorMessage,
+          listener: (context, state) {
+            if (state.infoMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.infoMessage!)),
+              );
+            } else if (state.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.errorMessage!)),
+              );
+            }
+          },
+        ),
+        BlocListener<CheckoutCubit, CheckoutState>(
+          listenWhen: (previous, current) =>
+              previous.status != current.status ||
+              previous.infoMessage != current.infoMessage ||
+              previous.errorMessage != current.errorMessage,
+          listener: (context, state) {
+            if (state.status == CheckoutStatus.success &&
+                state.infoMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.infoMessage!)),
+              );
+            } else if (state.status == CheckoutStatus.failure &&
+                state.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.errorMessage!)),
+              );
+            }
+          },
+        ),
+      ],
+      child: Scaffold(
+        appBar: AppBar(
+          title: BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, state) {
+              final user = state.user;
+              final greeting =
+                  user.isNotEmpty ? 'Hi, ${user.name}' : 'Welcome';
+              return Text(greeting);
+            },
+          ),
+          actions: [
+            IconButton(
+              icon: BlocBuilder<CartBloc, CartState>(
+                builder: (context, state) {
+                  if (state.totalItems == 0) {
+                    return const Icon(Icons.shopping_cart_outlined);
+                  }
+                  return Stack(
+                    children: [
+                      const Icon(Icons.shopping_cart),
+                      Positioned(
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Text(
+                            '${state.totalItems}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              onPressed: _openCart,
+            ),
+          ],
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'Shop'),
+              Tab(text: 'Account'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            _ShopTab(
+              onAddToCart: _addToCart,
+            ),
+            _AccountTab(
+              onEditProfile: _showEditProfileDialog,
+              onViewOrders: _openOrders,
+            ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _openCart,
+          icon: const Icon(Icons.shopping_bag_outlined),
+          label: const Text('View Cart'),
+        ),
       ),
     );
   }
 }
 
-class EditProfileScreen extends StatelessWidget {
-  final Map user;
-  final Function(Map) updateUser;
-
-  const EditProfileScreen({
-    super.key,
-    required this.user,
-    required this.updateUser,
+class _ShopTab extends StatelessWidget {
+  const _ShopTab({
+    required this.onAddToCart,
   });
+
+  final void Function(String productId) onAddToCart;
+
+  Future<void> _refresh(BuildContext context) async {
+    final catalogCubit = context.read<CatalogCubit>();
+    final cartBloc = context.read<CartBloc>();
+    final authState = context.read<AuthBloc>().state;
+
+    await catalogCubit.fetchProducts();
+    if (authState.status == AuthStatus.authenticated &&
+        authState.user.isNotEmpty) {
+      cartBloc.add(CartRequested(userId: authState.user.id));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    TextEditingController nameController = TextEditingController(
-      text: user['name'] ?? '',
-    );
-    TextEditingController mobileController = TextEditingController(
-      text: user['mobile'] ?? '',
-    );
+    return RefreshIndicator(
+      onRefresh: () => _refresh(context),
+      child: BlocBuilder<CatalogCubit, CatalogState>(
+        builder: (context, catalogState) {
+          if (catalogState.status == CatalogStatus.loading &&
+              catalogState.products.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-    String userId = user['_id'] ?? user['id'] ?? '';
+          if (catalogState.status == CatalogStatus.failure) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  catalogState.errorMessage ?? 'Failed to load products',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+            );
+          }
 
-Future<void> updateProfile() async {
-  if (nameController.text.isEmpty) {
-    Fluttertoast.showToast(
-      msg: "Name cannot be empty",
-      backgroundColor: Colors.red,
-      textColor: Colors.white,
-      fontSize: 16.0,
-    );
-    return;
-  }
+          final products = catalogState.products;
+          if (products.isEmpty) {
+            return const Center(child: Text('No products available.'));
+          }
 
-  // Validate mobile number length
-  if (mobileController.text.length != 10) {
-    Fluttertoast.showToast(
-      msg: "Enter a valid 10-digit mobile number",
-      backgroundColor: Colors.red,
-      textColor: Colors.white,
-      fontSize: 16.0,
-    );
-    return;
-  }
-
-  if (userId.isEmpty) {
-    Fluttertoast.showToast(
-      msg: "Invalid user ID format",
-      backgroundColor: Colors.red,
-      textColor: Colors.white,
-      fontSize: 16.0,
-    );
-    return;
-  }
-
-  var url = Uri.parse('https://5e0c1fb67d19.ngrok-free.app/api/user/edit/$userId');
-  try {
-    var response = await http.patch(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'name': nameController.text,
-        'mobile': mobileController.text,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      // Update the user on the HomeScreen with the new data
-      updateUser({
-        ...user,
-        'name': nameController.text,
-        'mobile': mobileController.text,
-      });
-
-      // Save the updated user data to SharedPreferences
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString('userData', json.encode({
-        'name': nameController.text,
-        'email': user['email'], // Retain other user data
-        'mobile': mobileController.text,
-        'id': userId,
-      }));
-
-      Fluttertoast.showToast(
-        msg: "Profile updated successfully",
-        backgroundColor: Colors.green,
-        textColor: Colors.white,
-        fontSize: 16.0,
-      );
-      Navigator.of(context).pop(); // Go back to the previous screen
-    } else {
-      Fluttertoast.showToast(
-        msg: "Failed to update profile: ${json.decode(response.body)['message']}",
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0,
-      );
-    }
-  } catch (e) {
-    Fluttertoast.showToast(
-      msg: "Error updating profile: $e",
-      backgroundColor: Colors.red,
-      textColor: Colors.white,
-      fontSize: 16.0,
+          return BlocBuilder<CartBloc, CartState>(
+            builder: (context, _) {
+              return ListView.separated(
+                padding: const EdgeInsets.only(bottom: 80, top: 12),
+                itemCount: products.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final product = products[index];
+                  return _ProductTile(
+                    product: product,
+                    onAddToCart: () => onAddToCart(product.id),
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
 
+class _ProductTile extends StatelessWidget {
+  const _ProductTile({
+    required this.product,
+    required this.onAddToCart,
+  });
 
-    return Scaffold(
-      appBar: AppBar(title: Text("Edit Profile")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+  final ProductModel product;
+  final VoidCallback onAddToCart;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(labelText: "Name"),
+            Text(
+              product.name,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            TextField(
-              controller: mobileController,
-              decoration: InputDecoration(labelText: "Mobile"),
-              keyboardType:
-                  TextInputType
-                      .number, // Ensures the keyboard is suitable for numbers
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-              ], // Allow digits only
+            if ((product.description ?? '').isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(product.description!),
+            ],
+            if (product.formattedQuantity.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text('Quantity: ${product.formattedQuantity}'),
+            ],
+            const SizedBox(height: 8),
+            Text(
+              '₹ ${product.price.toStringAsFixed(2)}',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            SizedBox(height: 20),
-            // Text('User ID: $userId'),
-            // SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: updateProfile,
-              child: Text("Update Profile"),
+            const SizedBox(height: 12),
+            BlocBuilder<CartBloc, CartState>(
+              builder: (context, cartState) {
+                final isLoading =
+                    cartState.isUpdating && cartState.pendingProductId == product.id;
+                return SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: isLoading ? null : onAddToCart,
+                    icon: const Icon(Icons.add_shopping_cart),
+                    label: isLoading
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Add to Cart'),
+                  ),
+                );
+              },
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AccountTab extends StatelessWidget {
+  const _AccountTab({
+    required this.onEditProfile,
+    required this.onViewOrders,
+  });
+
+  final ValueChanged<UserModel> onEditProfile;
+  final ValueChanged<UserModel> onViewOrders;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, state) {
+          final user = state.user;
+          if (state.status == AuthStatus.loading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (user.isEmpty) {
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('Login to manage your account.'),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushReplacementNamed(
+                      context,
+                      RegisterPage.routeName,
+                    );
+                  },
+                  child: const Text('Login / Register'),
+                ),
+              ],
+            );
+          }
+
+          return ListView(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.person),
+                title: Text(user.name),
+                subtitle: Text(user.email),
+              ),
+              if ((user.mobile ?? '').isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.phone),
+                  title: Text(user.mobile!),
+                  subtitle: const Text('Mobile'),
+                ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () => onEditProfile(user),
+                icon: const Icon(Icons.edit),
+                label: const Text('Edit Profile'),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () => onViewOrders(user),
+                icon: const Icon(Icons.receipt_long),
+                label: const Text('View Orders'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () {
+                  context.read<AuthBloc>().add(const AuthLogoutRequested());
+                },
+                icon: const Icon(Icons.logout),
+                label: const Text('Logout'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
