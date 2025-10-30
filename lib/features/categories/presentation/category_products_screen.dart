@@ -1,8 +1,11 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:flutter_application_1/features/auth/bloc/auth_bloc.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_bloc.dart';
+import 'package:flutter_application_1/features/cart/bloc/cart_event.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_state.dart';
+import 'package:flutter_application_1/features/cart/data/models/cart_item_model.dart';
 import 'package:flutter_application_1/features/categories/cubit/category_products_cubit.dart';
 import 'package:flutter_application_1/features/categories/cubit/category_products_state.dart';
 import 'package:flutter_application_1/features/catalog/data/models/product_model.dart';
@@ -168,20 +171,96 @@ class _CategoryProductCard extends StatelessWidget {
             const SizedBox(height: 12),
             BlocBuilder<CartBloc, CartState>(
               builder: (context, cartState) {
-                final isLoading = cartState.isUpdating &&
-                    cartState.pendingProductId == product.id;
-                return SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: isLoading ? null : onAddToCart,
-                    icon: const Icon(Icons.add_shopping_cart),
-                    label: isLoading
-                        ? const SizedBox(
-                            height: 18,
-                            width: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Add to Cart'),
+                CartItemModel? cartItem;
+                for (final item in cartState.items) {
+                  if (item.product.id == product.id) {
+                    cartItem = item;
+                    break;
+                  }
+                }
+
+                if (cartItem == null) {
+                  final isLoading = cartState.isUpdating &&
+                      cartState.pendingProductId == product.id;
+                  return SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: isLoading ? null : onAddToCart,
+                      icon: const Icon(Icons.add_shopping_cart),
+                      label: isLoading
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Add to Cart'),
+                    ),
+                  );
+                }
+
+                final cartItemId = cartItem.id;
+                final isUpdatingQuantity = cartState.isUpdating &&
+                    cartState.pendingCartItemId == cartItemId;
+                final user = context.read<AuthBloc>().state.user;
+                final quantityText = '${cartItem.quantity}';
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle_outline),
+                            onPressed: isUpdatingQuantity
+                                ? null
+                                : () {
+                                    if (user.isEmpty) return;
+                                    context.read<CartBloc>().add(
+                                          CartItemQuantityChanged(
+                                            userId: user.id,
+                                            cartItemId: cartItemId,
+                                            quantityChange: -1,
+                                          ),
+                                        );
+                                  },
+                          ),
+                          Text(
+                            quantityText,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.add_circle_outline),
+                            onPressed: isUpdatingQuantity
+                                ? null
+                                : () {
+                                    if (user.isEmpty) return;
+                                    context.read<CartBloc>().add(
+                                          CartItemQuantityChanged(
+                                            userId: user.id,
+                                            cartItemId: cartItemId,
+                                            quantityChange: 1,
+                                          ),
+                                        );
+                                  },
+                          ),
+                        ],
+                      ),
+                      if (isUpdatingQuantity)
+                        const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                    ],
                   ),
                 );
               },
@@ -245,4 +324,7 @@ class _PlaceholderImage extends StatelessWidget {
     );
   }
 }
+
+
+
 
