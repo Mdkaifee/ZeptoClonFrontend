@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
@@ -150,7 +150,7 @@ class _PayWithRazorpayScreenState extends State<PayWithRazorpayScreen> {
                     final item = widget.cartItems[index];
                     return ListTile(
                       title: Text(item.product.name),
-                      subtitle: Text('${item.quantity} × ₹${item.product.price}'),
+                      subtitle: Text('${item.quantity} Ã— ₹${item.product.price}'),
                       trailing:
                           Text('₹${item.totalPrice.toStringAsFixed(2)}'),
                     );
@@ -172,3 +172,4 @@ class _PayWithRazorpayScreenState extends State<PayWithRazorpayScreen> {
     );
   }
 }
+

@@ -10,6 +10,7 @@ class ProductModel extends Equatable {
     this.quantityValue,
     this.quantityUnit,
     this.category,
+    this.categories = const <String>[],
   });
 
   final String id;
@@ -20,9 +21,13 @@ class ProductModel extends Equatable {
   final String? quantityValue;
   final String? quantityUnit;
   final String? category;
+  final List<String> categories;
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     final quantity = json['quantity'] as Map<String, dynamic>?;
+    final categoriesJson = json['categories'] as List<dynamic>? ?? const [];
+    final parsedCategories =
+        categoriesJson.map((item) => item.toString()).toList(growable: false);
     return ProductModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
@@ -31,7 +36,9 @@ class ProductModel extends Equatable {
       imageUrl: json['image']?.toString() ?? json['imgUrl']?.toString(),
       quantityValue: quantity?['value']?.toString(),
       quantityUnit: quantity?['unit']?.toString(),
-      category: json['category']?.toString(),
+      category: json['category']?.toString() ??
+          (parsedCategories.isNotEmpty ? parsedCategories.first : null),
+      categories: parsedCategories,
     );
   }
 
@@ -48,6 +55,7 @@ class ProductModel extends Equatable {
           if (quantityUnit != null) 'unit': quantityUnit,
         },
       if (category != null) 'category': category,
+      if (categories.isNotEmpty) 'categories': categories,
     };
   }
 
@@ -70,6 +78,7 @@ class ProductModel extends Equatable {
     String? quantityValue,
     String? quantityUnit,
     String? category,
+    List<String>? categories,
   }) {
     return ProductModel(
       id: id ?? this.id,
@@ -80,6 +89,7 @@ class ProductModel extends Equatable {
       quantityValue: quantityValue ?? this.quantityValue,
       quantityUnit: quantityUnit ?? this.quantityUnit,
       category: category ?? this.category,
+      categories: categories ?? this.categories,
     );
   }
 
@@ -91,5 +101,15 @@ class ProductModel extends Equatable {
 
   @override
   List<Object?> get props =>
-      [id, name, price, description, imageUrl, quantityValue, quantityUnit, category];
+      [
+        id,
+        name,
+        price,
+        description,
+        imageUrl,
+        quantityValue,
+        quantityUnit,
+        category,
+        categories,
+      ];
 }

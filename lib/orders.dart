@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import 'package:flutter_application_1/features/orders/data/models/order_model.dart';
 
@@ -33,7 +33,7 @@ class OrdersScreen extends StatelessWidget {
                     child: ListTile(
                       title: Text(item.product.name),
                       subtitle: Text(
-                        '${item.quantity} × ₹${item.product.price.toStringAsFixed(2)}',
+                        '${item.quantity} Ã— ₹${item.product.price.toStringAsFixed(2)}',
                       ),
                       trailing: Text(
                         '₹${item.totalPrice.toStringAsFixed(2)}',
@@ -62,3 +62,4 @@ class OrdersScreen extends StatelessWidget {
     );
   }
 }
+

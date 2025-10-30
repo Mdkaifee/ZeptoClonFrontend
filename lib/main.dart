@@ -18,6 +18,8 @@ import 'package:flutter_application_1/register_page.dart';
 import 'package:flutter_application_1/splash_screen.dart';
 import 'package:flutter_application_1/features/payment/cubit/checkout_cubit.dart';
 import 'package:flutter_application_1/home_screen.dart';
+import 'package:flutter_application_1/features/categories/cubit/categories_cubit.dart';
+import 'package:flutter_application_1/features/categories/data/repositories/category_repository.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +30,7 @@ void main() {
   final cartRepository = CartRepository(apiService: apiService);
   final orderRepository = OrderRepository(apiService: apiService);
   final paymentRepository = PaymentRepository(apiService: apiService);
+  final categoryRepository = CategoryRepository(apiService: apiService);
 
   runApp(
     MyApp(
@@ -36,6 +39,7 @@ void main() {
       cartRepository: cartRepository,
       orderRepository: orderRepository,
       paymentRepository: paymentRepository,
+      categoryRepository: categoryRepository,
     ),
   );
 }
@@ -48,6 +52,7 @@ class MyApp extends StatelessWidget {
     required this.cartRepository,
     required this.orderRepository,
     required this.paymentRepository,
+    required this.categoryRepository,
   });
 
   final AuthRepository authRepository;
@@ -55,6 +60,7 @@ class MyApp extends StatelessWidget {
   final CartRepository cartRepository;
   final OrderRepository orderRepository;
   final PaymentRepository paymentRepository;
+  final CategoryRepository categoryRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +71,7 @@ class MyApp extends StatelessWidget {
         RepositoryProvider.value(value: cartRepository),
         RepositoryProvider.value(value: orderRepository),
         RepositoryProvider.value(value: paymentRepository),
+        RepositoryProvider.value(value: categoryRepository),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -89,6 +96,10 @@ class MyApp extends StatelessWidget {
               paymentRepository: paymentRepository,
               ordersCubit: context.read<OrdersCubit>(),
             ),
+          ),
+          BlocProvider<CategoriesCubit>(
+            create: (_) =>
+                CategoriesCubit(categoryRepository: categoryRepository),
           ),
         ],
         child: MaterialApp(

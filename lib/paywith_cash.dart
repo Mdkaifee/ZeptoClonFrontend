@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:flutter_application_1/features/auth/data/models/user_model.dart';
@@ -75,7 +75,7 @@ class PayWithCashScreen extends StatelessWidget {
                       final item = cartItems[index];
                       return ListTile(
                         title: Text(item.product.name),
-                        subtitle: Text('${item.quantity} × ₹${item.product.price}'),
+                        subtitle: Text('${item.quantity} Ã— ₹${item.product.price}'),
                         trailing: Text('₹${item.totalPrice.toStringAsFixed(2)}'),
                       );
                     },
@@ -112,3 +112,4 @@ class PayWithCashScreen extends StatelessWidget {
     );
   }
 }
+

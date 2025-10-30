@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:flutter_application_1/bottom_nav.dart';
 import 'package:flutter_application_1/core/routes/app_routes.dart';
 import 'package:flutter_application_1/features/auth/bloc/auth_bloc.dart';
 import 'package:flutter_application_1/features/auth/bloc/auth_event.dart';
@@ -9,6 +10,11 @@ import 'package:flutter_application_1/features/auth/data/models/user_model.dart'
 import 'package:flutter_application_1/features/cart/bloc/cart_bloc.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_event.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_state.dart';
+import 'package:flutter_application_1/features/categories/cubit/categories_cubit.dart';
+import 'package:flutter_application_1/features/categories/cubit/categories_state.dart';
+import 'package:flutter_application_1/features/categories/cubit/category_products_cubit.dart';
+import 'package:flutter_application_1/features/categories/data/repositories/category_repository.dart';
+import 'package:flutter_application_1/features/categories/presentation/category_products_screen.dart';
 import 'package:flutter_application_1/features/catalog/cubit/catalog_cubit.dart';
 import 'package:flutter_application_1/features/catalog/cubit/catalog_state.dart';
 import 'package:flutter_application_1/features/catalog/data/models/product_model.dart';
@@ -29,22 +35,13 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
+class _HomeScreenState extends State<HomeScreen> {
+  static const int _shopIndex = 0;
+  static const int _categoriesIndex = 1;
+  static const int _accountIndex = 2;
+
+  int _currentIndex = _shopIndex;
   bool _cartRequested = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
 
   @override
   void didChangeDependencies() {
@@ -97,11 +94,31 @@ class _HomeScreenState extends State<HomeScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: context.read<OrdersCubit>(),
+          child: YourOrdersScreen(userId: user.id),
+        ),
+      ),
+    );
+  }
+
+  void _openCategoryProducts(String category) {
+    final repository = context.read<CategoryRepository>();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
         builder: (_) => MultiBlocProvider(
           providers: [
-            BlocProvider.value(value: context.read<OrdersCubit>()),
+            BlocProvider.value(value: context.read<CartBloc>()),
+            BlocProvider<CategoryProductsCubit>(
+              create: (_) =>
+                  CategoryProductsCubit(categoryRepository: repository),
+            ),
           ],
-          child: YourOrdersScreen(userId: user.id),
+          child: CategoryProductsScreen(
+            category: category,
+            onAddToCart: _addToCart,
+          ),
         ),
       ),
     );
@@ -182,6 +199,51 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  void _onNavTap(int index) {
+    if (_currentIndex == index) return;
+    setState(() {
+      _currentIndex = index;
+    });
+    if (index == _categoriesIndex) {
+      final categoriesState = context.read<CategoriesCubit>().state;
+      if (categoriesState.status == CategoriesStatus.initial) {
+        context.read<CategoriesCubit>().fetchCategories();
+      }
+    }
+  }
+
+  String _appBarTitle(AuthState state) {
+    switch (_currentIndex) {
+      case _shopIndex:
+        final user = state.user;
+        return user.isNotEmpty ? 'Hi, ${user.name}' : 'Welcome';
+      case _categoriesIndex:
+        return 'Categories';
+      case _accountIndex:
+        return 'Account';
+      default:
+        return 'My App';
+    }
+  }
+
+  Widget _buildCurrentTab() {
+    switch (_currentIndex) {
+      case _shopIndex:
+        return _ShopTab(onAddToCart: _addToCart);
+      case _categoriesIndex:
+        return _CategoriesTab(onCategoryTap: _openCategoryProducts);
+      case _accountIndex:
+        return _AccountTab(
+          onEditProfile: _showEditProfileDialog,
+          onViewOrders: _openOrders,
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  bool get _showFab => _currentIndex != _accountIndex;
+
   @override
   Widget build(BuildContext context) {
     return MultiBlocListener(
@@ -256,12 +318,7 @@ class _HomeScreenState extends State<HomeScreen>
       child: Scaffold(
         appBar: AppBar(
           title: BlocBuilder<AuthBloc, AuthState>(
-            builder: (context, state) {
-              final user = state.user;
-              final greeting =
-                  user.isNotEmpty ? 'Hi, ${user.name}' : 'Welcome';
-              return Text(greeting);
-            },
+            builder: (context, state) => Text(_appBarTitle(state)),
           ),
           actions: [
             IconButton(
@@ -281,10 +338,8 @@ class _HomeScreenState extends State<HomeScreen>
                             color: Colors.red,
                             shape: BoxShape.circle,
                           ),
-                          constraints: const BoxConstraints(
-                            minWidth: 18,
-                            minHeight: 18,
-                          ),
+                          constraints:
+                              const BoxConstraints(minWidth: 18, minHeight: 18),
                           child: Text(
                             '${state.totalItems}',
                             style: const TextStyle(
@@ -303,30 +358,18 @@ class _HomeScreenState extends State<HomeScreen>
               onPressed: _openCart,
             ),
           ],
-          bottom: TabBar(
-            controller: _tabController,
-            tabs: const [
-              Tab(text: 'Shop'),
-              Tab(text: 'Account'),
-            ],
-          ),
         ),
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _ShopTab(
-              onAddToCart: _addToCart,
-            ),
-            _AccountTab(
-              onEditProfile: _showEditProfileDialog,
-              onViewOrders: _openOrders,
-            ),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _openCart,
-          icon: const Icon(Icons.shopping_bag_outlined),
-          label: const Text('View Cart'),
+        body: _buildCurrentTab(),
+        floatingActionButton: _showFab
+            ? FloatingActionButton.extended(
+                onPressed: _openCart,
+                icon: const Icon(Icons.shopping_bag_outlined),
+                label: const Text('View Cart'),
+              )
+            : null,
+        bottomNavigationBar: AppBottomNav(
+          currentIndex: _currentIndex,
+          onTap: _onNavTap,
         ),
       ),
     );
@@ -334,9 +377,7 @@ class _HomeScreenState extends State<HomeScreen>
 }
 
 class _ShopTab extends StatelessWidget {
-  const _ShopTab({
-    required this.onAddToCart,
-  });
+  const _ShopTab({required this.onAddToCart});
 
   final void Function(String productId) onAddToCart;
 
@@ -382,7 +423,7 @@ class _ShopTab extends StatelessWidget {
           }
 
           return BlocBuilder<CartBloc, CartState>(
-            builder: (context, _) {
+            builder: (context, cartState) {
               return ListView.separated(
                 padding: const EdgeInsets.only(bottom: 80, top: 12),
                 itemCount: products.length,
@@ -472,6 +513,86 @@ class _ProductTile extends StatelessWidget {
   }
 }
 
+class _CategoriesTab extends StatelessWidget {
+  const _CategoriesTab({required this.onCategoryTap});
+
+  final ValueChanged<String> onCategoryTap;
+
+  Future<void> _refresh(BuildContext context) {
+    return context
+        .read<CategoriesCubit>()
+        .fetchCategories(forceRefresh: true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: () => _refresh(context),
+      child: BlocBuilder<CategoriesCubit, CategoriesState>(
+        builder: (context, state) {
+          switch (state.status) {
+            case CategoriesStatus.initial:
+              context.read<CategoriesCubit>().fetchCategories();
+              return const Center(child: CircularProgressIndicator());
+            case CategoriesStatus.loading:
+              if (state.categories.isEmpty) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              break;
+            case CategoriesStatus.failure:
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        state.errorMessage ?? 'Failed to load categories.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => context
+                            .read<CategoriesCubit>()
+                            .fetchCategories(forceRefresh: true),
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            case CategoriesStatus.success:
+              break;
+          }
+
+          final categories = state.categories;
+          if (categories.isEmpty) {
+            return const Center(child: Text('No categories available.'));
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: categories.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final category = categories[index];
+              return Card(
+                child: ListTile(
+                  title: Text(category.name),
+                  subtitle: Text('${category.productCount} products'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => onCategoryTap(category.name),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _AccountTab extends StatelessWidget {
   const _AccountTab({
     required this.onEditProfile,
@@ -550,3 +671,4 @@ class _AccountTab extends StatelessWidget {
     );
   }
 }
+

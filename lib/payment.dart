@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:flutter_application_1/features/auth/data/models/user_model.dart';
@@ -57,7 +57,7 @@ class _PaymentOptionScreenState extends State<PaymentOptionScreen> {
                             child: ListTile(
                               title: Text(item.product.name),
                               subtitle: Text(
-                                '${item.quantity} × ₹${item.product.price.toStringAsFixed(2)}',
+                                '${item.quantity} Ã— ₹${item.product.price.toStringAsFixed(2)}',
                               ),
                               trailing: Text(
                                 '₹${item.totalPrice.toStringAsFixed(2)}',
@@ -206,3 +206,6 @@ class _PaymentMethodTile extends StatelessWidget {
     );
   }
 }
+
+
+
