@@ -7,17 +7,27 @@ class CartItemModel extends Equatable {
     required this.id,
     required this.product,
     required this.quantity,
+    required this.productAmount,
   });
 
   final String id;
   final ProductModel product;
   final int quantity;
+  final double productAmount;
 
   factory CartItemModel.fromJson(Map<String, dynamic> json) {
+    final product = ProductModel.fromJson(json['product'] as Map<String, dynamic>);
+    final quantity = (json['quantity'] as num?)?.toInt() ?? 0;
+    final amountValue = json['productAmount'] ?? json['totalAmount'];
+    final productAmount = (amountValue is num)
+        ? amountValue.toDouble()
+        : double.tryParse(amountValue?.toString() ?? '');
+
     return CartItemModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
-      product: ProductModel.fromJson(json['product'] as Map<String, dynamic>),
-      quantity: (json['quantity'] as num?)?.toInt() ?? 0,
+      product: product,
+      quantity: quantity,
+      productAmount: productAmount ?? (product.price * quantity),
     );
   }
 
@@ -26,6 +36,7 @@ class CartItemModel extends Equatable {
       'id': id,
       'product': product.toJson(),
       'quantity': quantity,
+      'productAmount': productAmount,
     };
   }
 
@@ -33,16 +44,23 @@ class CartItemModel extends Equatable {
     String? id,
     ProductModel? product,
     int? quantity,
+    double? productAmount,
   }) {
     return CartItemModel(
       id: id ?? this.id,
       product: product ?? this.product,
       quantity: quantity ?? this.quantity,
+      productAmount: productAmount ?? this.productAmount,
     );
   }
 
-  double get totalPrice => product.price * quantity;
+  double get totalPrice => productAmount;
+
+  double get unitPrice {
+    if (quantity <= 0) return product.price;
+    return productAmount / quantity;
+  }
 
   @override
-  List<Object?> get props => [id, product, quantity];
+  List<Object?> get props => [id, product, quantity, productAmount];
 }

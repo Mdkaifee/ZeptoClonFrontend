@@ -150,7 +150,7 @@ class _PayWithRazorpayScreenState extends State<PayWithRazorpayScreen> {
                     final item = widget.cartItems[index];
                     return ListTile(
                       title: Text(item.product.name),
-                      subtitle: Text('${item.quantity} Ã— ₹${item.product.price}'),
+                      subtitle: Text('${item.quantity} item— ₹${item.product.price}'),
                       trailing:
                           Text('₹${item.totalPrice.toStringAsFixed(2)}'),
                     );

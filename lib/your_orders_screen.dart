@@ -109,15 +109,14 @@ class _OrderCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(child: Text(item.product.name)),
-                    Text('${item.quantity}'),
-                    Text('x'),
-                    Text('₹${item.totalPrice.toStringAsFixed(2)}'),
+                    Text('${item.quantity} × ₹ ${item.unitPrice.toStringAsFixed(2)}'),
+                    // Text('₹ ${item.totalPrice.toStringAsFixed(2)}'),
                   ],
                 ),
               ),
             ),
             const Divider(),
-            Text('Total Amount: ₹${order.totalAmount.toStringAsFixed(2)}'),
+            Text('Total Amount: ₹ ${order.totalAmount.toStringAsFixed(2)}'),
             Text('Payment Status: ${order.paymentStatus}'),
             Text('Order Status: ${order.orderStatus}'),
             Text('Placed on: $date'),
@@ -127,4 +126,3 @@ class _OrderCard extends StatelessWidget {
     );
   }
 }
-

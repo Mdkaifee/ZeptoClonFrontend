@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:flutter_application_1/features/orders/data/models/order_model.dart';
 
@@ -33,10 +33,10 @@ class OrdersScreen extends StatelessWidget {
                     child: ListTile(
                       title: Text(item.product.name),
                       subtitle: Text(
-                        '${item.quantity} Ã— ₹${item.product.price.toStringAsFixed(2)}',
+                        '${item.quantity} × ₹ ${item.unitPrice.toStringAsFixed(2)}',
                       ),
                       trailing: Text(
-                        '₹${item.totalPrice.toStringAsFixed(2)}',
+                        '₹ ${item.totalPrice.toStringAsFixed(2)}',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -50,7 +50,7 @@ class OrdersScreen extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             Text(
-              'Grand total: ₹${order.totalAmount.toStringAsFixed(2)}',
+              'Grand total: ₹ ${order.totalAmount.toStringAsFixed(2)}',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
@@ -62,4 +62,3 @@ class OrdersScreen extends StatelessWidget {
     );
   }
 }
-

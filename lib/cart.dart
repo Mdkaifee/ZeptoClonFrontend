@@ -151,7 +151,7 @@ class _CartItemCard extends StatelessWidget {
             if (item.product.formattedQuantity.isNotEmpty)
               Text('Quantity: ${item.product.formattedQuantity}'),
             const SizedBox(height: 8),
-            Text('Price: ₹ ${item.product.price.toStringAsFixed(2)}'),
+            Text('Price: ₹ ${item.unitPrice.toStringAsFixed(2)}'),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -239,6 +239,10 @@ class _CartSummary extends StatelessWidget {
     );
   }
 }
+
+
+
+
 
 
 

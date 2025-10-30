@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:flutter_application_1/features/auth/data/models/user_model.dart';
@@ -57,10 +57,10 @@ class _PaymentOptionScreenState extends State<PaymentOptionScreen> {
                             child: ListTile(
                               title: Text(item.product.name),
                               subtitle: Text(
-                                '${item.quantity} item— ₹${item.product.price.toStringAsFixed(2)}',
+                                '${item.quantity} × ₹ ${item.unitPrice.toStringAsFixed(2)}',
                               ),
                               trailing: Text(
-                                '₹${item.totalPrice.toStringAsFixed(2)}',
+                                '₹ ${item.totalPrice.toStringAsFixed(2)}',
                                 style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
                             ),
@@ -74,7 +74,7 @@ class _PaymentOptionScreenState extends State<PaymentOptionScreen> {
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      'Grand total: ₹${cartState.totalAmount.toStringAsFixed(2)}',
+                      'Grand total: ₹ ${cartState.totalAmount.toStringAsFixed(2)}',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 16),
@@ -111,7 +111,7 @@ class _PaymentOptionScreenState extends State<PaymentOptionScreen> {
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
                             : Text(
-                                'Proceed to Pay  ₹${cartState.totalAmount.toStringAsFixed(2)}',
+                                'Proceed to Pay  ₹ ${cartState.totalAmount.toStringAsFixed(2)}',
                                 style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
                       ),
@@ -206,6 +206,3 @@ class _PaymentMethodTile extends StatelessWidget {
     );
   }
 }
-
-
-
