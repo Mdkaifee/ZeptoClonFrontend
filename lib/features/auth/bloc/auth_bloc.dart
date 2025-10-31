@@ -16,6 +16,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLogoutRequested>(_onLogoutRequested);
     on<AuthRegistrationSubmitted>(_onRegistrationSubmitted);
     on<AuthProfileUpdated>(_onProfileUpdated);
+    on<AuthAccountDeletionRequested>(_onAccountDeletionRequested);
   }
 
   final AuthRepository _authRepository;
@@ -204,6 +205,69 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         state.copyWith(
           status: AuthStatus.authenticated,
           errorMessage: null,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onAccountDeletionRequested(
+    AuthAccountDeletionRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    final currentUser = state.user;
+    final currentToken = state.token;
+
+    emit(
+      AuthState(
+        status: AuthStatus.loading,
+        user: currentUser,
+        token: currentToken,
+      ),
+    );
+
+    try {
+      final message = await _authRepository.softDeleteAccount(
+        userId: event.userId,
+        reason: event.reason,
+      );
+      emit(
+        AuthState(
+          status: AuthStatus.unauthenticated,
+          user: UserModel.empty,
+          token: '',
+          infoMessage: message,
+        ),
+      );
+    } on AuthException catch (error) {
+      emit(
+        AuthState(
+          status: AuthStatus.failure,
+          user: currentUser,
+          token: currentToken,
+          errorMessage: error.message,
+        ),
+      );
+      emit(
+        AuthState(
+          status: AuthStatus.authenticated,
+          user: currentUser,
+          token: currentToken,
+        ),
+      );
+    } catch (error) {
+      emit(
+        AuthState(
+          status: AuthStatus.failure,
+          user: currentUser,
+          token: currentToken,
+          errorMessage: error.toString(),
+        ),
+      );
+      emit(
+        AuthState(
+          status: AuthStatus.authenticated,
+          user: currentUser,
+          token: currentToken,
         ),
       );
     }

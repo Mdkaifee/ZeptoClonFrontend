@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:flutter_application_1/api_services.dart';
 import 'package:flutter_application_1/core/routes/app_routes.dart';
+import 'package:flutter_application_1/features/account/data/repositories/content_repository.dart';
 import 'package:flutter_application_1/features/auth/bloc/auth_bloc.dart';
 import 'package:flutter_application_1/features/auth/bloc/auth_event.dart';
 import 'package:flutter_application_1/features/auth/data/repositories/auth_repository.dart';
@@ -34,6 +35,7 @@ void main() {
   final paymentRepository = PaymentRepository(apiService: apiService);
   final categoryRepository = CategoryRepository(apiService: apiService);
   final wishlistRepository = WishlistRepository(apiService: apiService);
+  final contentRepository = ContentRepository(apiService: apiService);
 
   runApp(
     MyApp(
@@ -44,6 +46,7 @@ void main() {
       paymentRepository: paymentRepository,
       categoryRepository: categoryRepository,
       wishlistRepository: wishlistRepository,
+      contentRepository: contentRepository,
     ),
   );
 }
@@ -58,6 +61,7 @@ class MyApp extends StatelessWidget {
     required this.paymentRepository,
     required this.categoryRepository,
     required this.wishlistRepository,
+    required this.contentRepository,
   });
 
   final AuthRepository authRepository;
@@ -67,6 +71,7 @@ class MyApp extends StatelessWidget {
   final PaymentRepository paymentRepository;
   final CategoryRepository categoryRepository;
   final WishlistRepository wishlistRepository;
+  final ContentRepository contentRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +84,7 @@ class MyApp extends StatelessWidget {
         RepositoryProvider.value(value: paymentRepository),
         RepositoryProvider.value(value: categoryRepository),
         RepositoryProvider.value(value: wishlistRepository),
+        RepositoryProvider.value(value: contentRepository),
       ],
       child: MultiBlocProvider(
         providers: [

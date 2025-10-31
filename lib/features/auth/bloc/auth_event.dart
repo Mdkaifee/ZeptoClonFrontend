@@ -56,3 +56,16 @@ class AuthProfileUpdated extends AuthEvent {
   @override
   List<Object?> get props => [userId, name, mobile];
 }
+
+class AuthAccountDeletionRequested extends AuthEvent {
+  const AuthAccountDeletionRequested({
+    required this.userId,
+    this.reason,
+  });
+
+  final String userId;
+  final String? reason;
+
+  @override
+  List<Object?> get props => [userId, reason];
+}

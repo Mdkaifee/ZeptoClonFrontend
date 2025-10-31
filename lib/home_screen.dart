@@ -7,6 +7,9 @@ import 'package:flutter_application_1/features/auth/bloc/auth_bloc.dart';
 import 'package:flutter_application_1/features/auth/bloc/auth_event.dart';
 import 'package:flutter_application_1/features/auth/bloc/auth_state.dart';
 import 'package:flutter_application_1/features/auth/data/models/user_model.dart';
+import 'package:flutter_application_1/features/account/presentation/privacy_policy_screen.dart';
+import 'package:flutter_application_1/features/account/presentation/saved_addresses_screen.dart';
+import 'package:flutter_application_1/features/account/presentation/terms_conditions_screen.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_bloc.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_event.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_state.dart';
@@ -131,6 +134,97 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  void _openPrivacyPolicy() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const PrivacyPolicyScreen(),
+      ),
+    );
+  }
+
+  void _openTermsAndConditions() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const TermsAndConditionsScreen(),
+      ),
+    );
+  }
+
+  void _openSavedAddresses() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const SavedAddressesScreen(),
+      ),
+    );
+  }
+
+  Future<void> _confirmLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Logout'),
+          content: const Text('Do you want to logout from this device?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout == true) {
+      if (!mounted) return;
+      context.read<AuthBloc>().add(const AuthLogoutRequested());
+    }
+  }
+
+  Future<void> _confirmDeleteAccount(UserModel user) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Account'),
+          content: const Text(
+            'This will mark your account as deleted. Do you want to continue?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete Account'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete == true) {
+      if (!mounted) return;
+      context.read<AuthBloc>().add(
+            AuthAccountDeletionRequested(
+              userId: user.id,
+              reason: 'User requested account removal',
+            ),
+          );
+    }
   }
 
   void _openCategoryProducts(String category) {
@@ -269,6 +363,11 @@ class _HomeScreenState extends State<HomeScreen> {
           onEditProfile: _showEditProfileDialog,
           onViewOrders: _openOrders,
           onViewWishlist: _openWishlist,
+          onViewTerms: _openTermsAndConditions,
+          onViewPrivacy: _openPrivacyPolicy,
+          onViewSavedAddresses: _openSavedAddresses,
+          onLogout: () => _confirmLogout(),
+          onDeleteAccount: (user) => _confirmDeleteAccount(user),
         );
       default:
         return const SizedBox.shrink();
@@ -287,7 +386,13 @@ class _HomeScreenState extends State<HomeScreen> {
               previous.infoMessage != current.infoMessage ||
               previous.errorMessage != current.errorMessage,
           listener: (context, state) {
+            final infoMessage = state.infoMessage;
             if (state.status == AuthStatus.unauthenticated) {
+              if (infoMessage != null && infoMessage.isNotEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(infoMessage)),
+                );
+              }
               _cartRequested = false;
               _wishlistRequested = false;
               context.read<WishlistCubit>().clear();
@@ -296,15 +401,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 AppRoutes.login,
                 (route) => false,
               );
+              return;
             } else if (state.status == AuthStatus.failure &&
                 state.errorMessage != null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(state.errorMessage!)),
               );
-            } else if (state.infoMessage != null &&
-                state.infoMessage!.isNotEmpty) {
+              return;
+            }
+
+            if (infoMessage != null && infoMessage.isNotEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.infoMessage!)),
+                SnackBar(content: Text(infoMessage)),
               );
             }
 
@@ -907,11 +1015,21 @@ class _AccountTab extends StatelessWidget {
     required this.onEditProfile,
     required this.onViewOrders,
     required this.onViewWishlist,
+    required this.onViewTerms,
+    required this.onViewPrivacy,
+    required this.onViewSavedAddresses,
+    required this.onLogout,
+    required this.onDeleteAccount,
   });
 
   final ValueChanged<UserModel> onEditProfile;
   final ValueChanged<UserModel> onViewOrders;
   final ValueChanged<UserModel> onViewWishlist;
+  final VoidCallback onViewTerms;
+  final VoidCallback onViewPrivacy;
+  final VoidCallback onViewSavedAddresses;
+  final VoidCallback onLogout;
+  final ValueChanged<UserModel> onDeleteAccount;
 
   @override
   Widget build(BuildContext context) {
@@ -975,11 +1093,36 @@ class _AccountTab extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
-                onPressed: () {
-                  context.read<AuthBloc>().add(const AuthLogoutRequested());
-                },
+                onPressed: onViewTerms,
+                icon: const Icon(Icons.description_outlined),
+                label: const Text('Terms & Conditions'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: onViewPrivacy,
+                icon: const Icon(Icons.privacy_tip_outlined),
+                label: const Text('Privacy Policy'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: onViewSavedAddresses,
+                icon: const Icon(Icons.location_on_outlined),
+                label: const Text('Saved Addresses'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: onLogout,
                 icon: const Icon(Icons.logout),
                 label: const Text('Logout'),
+              ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () => onDeleteAccount(user),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.redAccent,
+                ),
+                icon: const Icon(Icons.delete_forever_outlined),
+                label: const Text('Delete Account'),
               ),
             ],
           );

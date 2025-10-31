@@ -129,6 +129,31 @@ class AuthRepository {
     );
   }
 
+  Future<String> softDeleteAccount({
+    required String userId,
+    String? reason,
+  }) async {
+    final response = await _apiService.delete(
+      '/api/user/soft-delete/$userId',
+      headers: _defaultHeaders,
+      body: (reason ?? '').isEmpty
+          ? null
+          : jsonEncode(<String, dynamic>{'reason': reason}),
+    );
+
+    final decoded = _decodeResponse(response);
+
+    if (response.statusCode == 200) {
+      await logout();
+      return decoded['message']?.toString() ?? 'Account deleted';
+    }
+
+    throw AuthException(
+      message: decoded['message']?.toString() ?? 'Failed to delete account',
+      statusCode: response.statusCode,
+    );
+  }
+
   Future<void> _persistAuthData(UserModel user, String token) async {
     await _storage.saveBool(_keyIsLoggedIn, true);
     await _storage.saveString(_keyToken, token);
