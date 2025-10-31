@@ -375,6 +375,28 @@ class _HomeScreenState extends State<HomeScreen> {
             builder: (context, state) => Text(_appBarTitle(state)),
           ),
           actions: [
+            if (_currentIndex == _categoriesIndex)
+              BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, authState) {
+                  return IconButton(
+                    icon: const Icon(Icons.favorite_border),
+                    tooltip: 'My Wishlist',
+                    onPressed: () {
+                      if (authState.status != AuthStatus.authenticated ||
+                          authState.user.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please login to manage wishlist'),
+                          ),
+                        );
+                        Navigator.pushNamed(context, RegisterPage.routeName);
+                        return;
+                      }
+                      _openWishlist(authState.user);
+                    },
+                  );
+                },
+              ),
             IconButton(
               icon: BlocBuilder<CartBloc, CartState>(
                 builder: (context, state) {

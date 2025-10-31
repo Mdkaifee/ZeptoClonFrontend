@@ -7,6 +7,7 @@ import 'package:flutter_application_1/features/auth/bloc/auth_state.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_bloc.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_event.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_state.dart';
+import 'package:flutter_application_1/features/cart/data/models/cart_item_model.dart';
 import 'package:flutter_application_1/features/catalog/data/models/product_model.dart';
 import 'package:flutter_application_1/features/wishlist/cubit/wishlist_cubit.dart';
 import 'package:flutter_application_1/features/wishlist/cubit/wishlist_state.dart';
@@ -210,11 +211,21 @@ class _WishlistScreenState extends State<WishlistScreen> {
                       final product = wishlistState.products[index];
                       final isWishlistUpdating = wishlistState.isUpdating &&
                           wishlistState.pendingProductId == product.id;
-                      final isInCart = cartState.items.any(
-                        (item) => item.product.id == product.id,
-                      );
+                      CartItemModel? cartItem;
+                      for (final item in cartState.items) {
+                        if (item.product.id == product.id) {
+                          cartItem = item;
+                          break;
+                        }
+                      }
+                      final cartItemId = cartItem?.id;
+                      final cartQuantity = cartItem?.quantity ?? 0;
+                      final isInCart = cartItemId != null;
                       final isAddingToCart = cartState.isUpdating &&
                           cartState.pendingProductId == product.id;
+                      final isUpdatingQuantity = cartState.isUpdating &&
+                          cartItemId != null &&
+                          cartState.pendingCartItemId == cartItemId;
 
                       return _WishlistItemCard(
                         product: product,
@@ -223,7 +234,26 @@ class _WishlistScreenState extends State<WishlistScreen> {
                         isAddingToCart: isAddingToCart,
                         onAddToCart: () => _addToCart(product),
                         onRemove: () => _toggleWishlist(product),
-                        onViewCart: _openCart,
+                        onIncrease: cartItemId == null
+                            ? null
+                            : () => context.read<CartBloc>().add(
+                                  CartItemQuantityChanged(
+                                    userId: widget.userId,
+                                    cartItemId: cartItemId,
+                                    quantityChange: 1,
+                                  ),
+                                ),
+                        onDecrease: cartItemId == null
+                            ? null
+                            : () => context.read<CartBloc>().add(
+                                  CartItemQuantityChanged(
+                                    userId: widget.userId,
+                                    cartItemId: cartItemId,
+                                    quantityChange: -1,
+                                  ),
+                                ),
+                        cartQuantity: cartQuantity,
+                        isUpdatingQuantity: isUpdatingQuantity,
                       );
                     },
                   ),
@@ -245,7 +275,10 @@ class _WishlistItemCard extends StatelessWidget {
     required this.isAddingToCart,
     required this.onAddToCart,
     required this.onRemove,
-    required this.onViewCart,
+    required this.onIncrease,
+    required this.onDecrease,
+    required this.cartQuantity,
+    required this.isUpdatingQuantity,
   });
 
   final ProductModel product;
@@ -254,7 +287,10 @@ class _WishlistItemCard extends StatelessWidget {
   final bool isAddingToCart;
   final VoidCallback onAddToCart;
   final VoidCallback onRemove;
-  final VoidCallback onViewCart;
+  final VoidCallback? onIncrease;
+  final VoidCallback? onDecrease;
+  final int cartQuantity;
+  final bool isUpdatingQuantity;
 
   @override
   Widget build(BuildContext context) {
@@ -331,10 +367,55 @@ class _WishlistItemCard extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: isInCart
-                        ? OutlinedButton.icon(
-                            onPressed: onViewCart,
-                            icon: const Icon(Icons.shopping_cart),
-                            label: const Text('View Cart'),
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.remove_circle_outline,
+                                      ),
+                                      onPressed: isUpdatingQuantity
+                                          ? null
+                                          : onDecrease,
+                                    ),
+                                    Text(
+                                      '$cartQuantity',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.add_circle_outline,
+                                      ),
+                                      onPressed: isUpdatingQuantity
+                                          ? null
+                                          : onIncrease,
+                                    ),
+                                  ],
+                                ),
+                                if (isUpdatingQuantity)
+                                  const Padding(
+                                    padding: EdgeInsets.only(right: 8),
+                                    child: SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                           )
                         : ElevatedButton.icon(
                             onPressed: isAddingToCart ? null : onAddToCart,

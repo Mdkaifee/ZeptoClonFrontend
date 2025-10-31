@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:flutter_application_1/core/routes/app_routes.dart';
 import 'package:flutter_application_1/features/auth/bloc/auth_bloc.dart';
 import 'package:flutter_application_1/features/auth/bloc/auth_state.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_bloc.dart';
@@ -8,6 +9,9 @@ import 'package:flutter_application_1/features/cart/bloc/cart_event.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_state.dart';
 import 'package:flutter_application_1/features/cart/data/models/cart_item_model.dart';
 import 'package:flutter_application_1/features/payment/cubit/checkout_cubit.dart';
+import 'package:flutter_application_1/features/wishlist/cubit/wishlist_cubit.dart';
+import 'package:flutter_application_1/features/wishlist/presentation/wishlist_screen.dart';
+import 'package:flutter_application_1/register_page.dart';
 
 import 'payment.dart';
 
@@ -19,9 +23,45 @@ class CartScreen extends StatelessWidget {
     final authState = context.watch<AuthBloc>().state;
     final user = authState.user;
 
+    void openWishlist() {
+      if (authState.status != AuthStatus.authenticated || user.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please login to manage wishlist')),
+        );
+        Navigator.pushNamed(context, RegisterPage.routeName);
+        return;
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider.value(value: context.read<WishlistCubit>()),
+              BlocProvider.value(value: context.read<CartBloc>()),
+            ],
+            child: WishlistScreen(userId: user.id),
+          ),
+        ),
+      );
+    }
+
+    AppBar buildAppBar() {
+      return AppBar(
+        title: const Text('Your Cart'),
+        actions: [
+          IconButton(
+            onPressed: openWishlist,
+            tooltip: 'My Wishlist',
+            icon: const Icon(Icons.favorite_border),
+          ),
+        ],
+      );
+    }
+
     if (authState.status != AuthStatus.authenticated || user.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Your Cart')),
+        appBar: buildAppBar(),
         body: const Center(
           child: Text('Login to view your cart'),
         ),
@@ -29,7 +69,7 @@ class CartScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Your Cart')),
+      appBar: buildAppBar(),
       body: BlocBuilder<CartBloc, CartState>(
         builder: (context, state) {
           if (state.status == CartStatus.loading && state.items.isEmpty) {
@@ -49,10 +89,28 @@ class CartScreen extends StatelessWidget {
           }
 
           if (state.items.isEmpty) {
-            return const Center(
-              child: Text(
-                'No items in your cart',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'No items in your cart',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        AppRoutes.home,
+                        (route) => false,
+                      );
+                    },
+                    icon: const Icon(Icons.storefront),
+                    label: const Text('Browse Products'),
+                  ),
+                ],
               ),
             );
           }
