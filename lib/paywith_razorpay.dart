@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
@@ -61,7 +61,7 @@ class _PayWithRazorpayScreenState extends State<PayWithRazorpayScreen> {
       final options = {
         'key': 'rzp_test_eR5i8vZrGKVnEB',
         'amount': (widget.amount * 100).toInt().toString(),
-        'name': 'Kaifee Quick Mart',
+        'name': 'Quick Basket',
         'description': 'Order payment',
         'order_id': orderId,
         'prefill': {

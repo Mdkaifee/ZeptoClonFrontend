@@ -10,6 +10,7 @@ import 'package:flutter_application_1/features/auth/data/models/user_model.dart'
 import 'package:flutter_application_1/features/account/presentation/privacy_policy_screen.dart';
 import 'package:flutter_application_1/features/account/presentation/saved_addresses_screen.dart';
 import 'package:flutter_application_1/features/account/presentation/terms_conditions_screen.dart';
+import 'package:flutter_application_1/features/addresses/cubit/addresses_cubit.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_bloc.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_event.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_state.dart';
@@ -50,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = _shopIndex;
   bool _cartRequested = false;
   bool _wishlistRequested = false;
+  bool _isOpeningSavedAddresses = false;
 
   @override
   void didChangeDependencies() {
@@ -106,7 +108,14 @@ class _HomeScreenState extends State<HomeScreen> {
           child: const CartScreen(),
         ),
       ),
-    );
+    ).then((result) {
+      if (!mounted) return;
+      if (result == cartNavigateToShopResult) {
+        setState(() {
+          _currentIndex = _shopIndex;
+        });
+      }
+    });
   }
 
   void _openOrders(UserModel user) {
@@ -154,13 +163,28 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _openSavedAddresses() {
+  void _openSavedAddresses(UserModel user) {
+    if (_isOpeningSavedAddresses) return;
+    setState(() {
+      _isOpeningSavedAddresses = true;
+    });
+    final addressesCubit = context.read<AddressesCubit>();
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => const SavedAddressesScreen(),
+        builder: (_) => MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: addressesCubit),
+          ],
+          child: SavedAddressesScreen(user: user),
+        ),
       ),
-    );
+    ).whenComplete(() {
+      if (!mounted) return;
+      setState(() {
+        _isOpeningSavedAddresses = false;
+      });
+    });
   }
 
   Future<void> _confirmLogout() async {
@@ -365,7 +389,8 @@ class _HomeScreenState extends State<HomeScreen> {
           onViewWishlist: _openWishlist,
           onViewTerms: _openTermsAndConditions,
           onViewPrivacy: _openPrivacyPolicy,
-          onViewSavedAddresses: _openSavedAddresses,
+          onViewSavedAddresses: (user) => _openSavedAddresses(user),
+          isSavedAddressesLoading: _isOpeningSavedAddresses,
           onLogout: () => _confirmLogout(),
           onDeleteAccount: (user) => _confirmDeleteAccount(user),
         );
@@ -1018,6 +1043,7 @@ class _AccountTab extends StatelessWidget {
     required this.onViewTerms,
     required this.onViewPrivacy,
     required this.onViewSavedAddresses,
+    required this.isSavedAddressesLoading,
     required this.onLogout,
     required this.onDeleteAccount,
   });
@@ -1027,7 +1053,8 @@ class _AccountTab extends StatelessWidget {
   final ValueChanged<UserModel> onViewWishlist;
   final VoidCallback onViewTerms;
   final VoidCallback onViewPrivacy;
-  final VoidCallback onViewSavedAddresses;
+  final ValueChanged<UserModel> onViewSavedAddresses;
+  final bool isSavedAddressesLoading;
   final VoidCallback onLogout;
   final ValueChanged<UserModel> onDeleteAccount;
 
@@ -1105,8 +1132,16 @@ class _AccountTab extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
-                onPressed: onViewSavedAddresses,
-                icon: const Icon(Icons.location_on_outlined),
+                onPressed: isSavedAddressesLoading
+                    ? null
+                    : () => onViewSavedAddresses(user),
+                icon: isSavedAddressesLoading
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.location_on_outlined),
                 label: const Text('Saved Addresses'),
               ),
               const SizedBox(height: 12),
@@ -1131,4 +1166,5 @@ class _AccountTab extends StatelessWidget {
     );
   }
 }
+
 

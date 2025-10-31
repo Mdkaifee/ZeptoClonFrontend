@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:flutter_application_1/features/auth/bloc/auth_bloc.dart';
@@ -7,7 +7,6 @@ import 'package:flutter_application_1/features/cart/bloc/cart_bloc.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_event.dart';
 import 'package:flutter_application_1/features/cart/bloc/cart_state.dart';
 import 'package:flutter_application_1/features/cart/data/models/cart_item_model.dart';
-import 'package:flutter_application_1/core/routes/app_routes.dart';
 import 'package:flutter_application_1/features/payment/cubit/checkout_cubit.dart';
 import 'package:flutter_application_1/features/cart/presentation/widgets/add_more_prompt.dart';
 import 'package:flutter_application_1/features/wishlist/cubit/wishlist_cubit.dart';
@@ -15,6 +14,9 @@ import 'package:flutter_application_1/features/wishlist/presentation/wishlist_sc
 import 'package:flutter_application_1/register_page.dart';
 
 import 'payment.dart';
+
+const cartNavigateToShopResult = 'cart_navigate_to_shop';
+
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -102,11 +104,7 @@ class CartScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: () {
-                      Navigator.pushNamedAndRemoveUntil(
-                        context,
-                        AppRoutes.home,
-                        (route) => false,
-                      );
+                      Navigator.pop(context, cartNavigateToShopResult);
                     },
                     icon: const Icon(Icons.storefront),
                     label: const Text('Browse Products'),
@@ -155,11 +153,7 @@ class CartScreen extends StatelessWidget {
               const SizedBox(height: 16),
               AddMorePrompt(
                 onAddMore: () {
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    AppRoutes.home,
-                    (route) => false,
-                  );
+                  Navigator.pop(context, cartNavigateToShopResult);
                 },
               ),
               _CartSummary(
@@ -220,7 +214,7 @@ class _CartItemCard extends StatelessWidget {
             if (item.product.formattedQuantity.isNotEmpty)
               Text('Quantity: ${item.product.formattedQuantity}'),
             const SizedBox(height: 8),
-            Text('Price: ₹ ${item.unitPrice.toStringAsFixed(2)}'),
+            Text('Price: ? ${item.unitPrice.toStringAsFixed(2)}'),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -242,7 +236,7 @@ class _CartItemCard extends StatelessWidget {
                   ],
                 ),
                 Text(
-                  'Subtotal: ₹ ${item.totalPrice.toStringAsFixed(2)}',
+                  'Subtotal: ? ${item.totalPrice.toStringAsFixed(2)}',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
@@ -286,7 +280,7 @@ class _CartSummary extends StatelessWidget {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           Text(
-            'Grand total: ₹ ${totalAmount.toStringAsFixed(2)}',
+            'Grand total: ? ${totalAmount.toStringAsFixed(2)}',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
@@ -308,6 +302,8 @@ class _CartSummary extends StatelessWidget {
     );
   }
 }
+
+
 
 
 

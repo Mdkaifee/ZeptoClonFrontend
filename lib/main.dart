@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_application_1/api_services.dart';
 import 'package:flutter_application_1/core/routes/app_routes.dart';
 import 'package:flutter_application_1/features/account/data/repositories/content_repository.dart';
+import 'package:flutter_application_1/features/addresses/cubit/addresses_cubit.dart';
+import 'package:flutter_application_1/features/addresses/data/repositories/address_repository.dart';
 import 'package:flutter_application_1/features/auth/bloc/auth_bloc.dart';
 import 'package:flutter_application_1/features/auth/bloc/auth_event.dart';
 import 'package:flutter_application_1/features/auth/data/repositories/auth_repository.dart';
@@ -36,6 +38,7 @@ void main() {
   final categoryRepository = CategoryRepository(apiService: apiService);
   final wishlistRepository = WishlistRepository(apiService: apiService);
   final contentRepository = ContentRepository(apiService: apiService);
+  final addressRepository = AddressRepository(apiService: apiService);
 
   runApp(
     MyApp(
@@ -47,6 +50,7 @@ void main() {
       categoryRepository: categoryRepository,
       wishlistRepository: wishlistRepository,
       contentRepository: contentRepository,
+      addressRepository: addressRepository,
     ),
   );
 }
@@ -62,6 +66,7 @@ class MyApp extends StatelessWidget {
     required this.categoryRepository,
     required this.wishlistRepository,
     required this.contentRepository,
+    required this.addressRepository,
   });
 
   final AuthRepository authRepository;
@@ -72,6 +77,7 @@ class MyApp extends StatelessWidget {
   final CategoryRepository categoryRepository;
   final WishlistRepository wishlistRepository;
   final ContentRepository contentRepository;
+  final AddressRepository addressRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -85,6 +91,7 @@ class MyApp extends StatelessWidget {
         RepositoryProvider.value(value: categoryRepository),
         RepositoryProvider.value(value: wishlistRepository),
         RepositoryProvider.value(value: contentRepository),
+        RepositoryProvider.value(value: addressRepository),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -117,6 +124,10 @@ class MyApp extends StatelessWidget {
           BlocProvider<WishlistCubit>(
             create: (_) =>
                 WishlistCubit(wishlistRepository: wishlistRepository),
+          ),
+          BlocProvider<AddressesCubit>(
+            create: (_) =>
+                AddressesCubit(addressRepository: addressRepository),
           ),
         ],
         child: MaterialApp(
