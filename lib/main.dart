@@ -131,7 +131,7 @@ class MyApp extends StatelessWidget {
           ),
         ],
         child: MaterialApp(
-          title: 'My App',
+          title: 'Quick Basket',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(primarySwatch: Colors.amber),
           routes: {

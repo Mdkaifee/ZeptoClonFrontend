@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:flutter_application_1/features/auth/bloc/auth_bloc.dart';
@@ -214,7 +214,7 @@ class _CartItemCard extends StatelessWidget {
             if (item.product.formattedQuantity.isNotEmpty)
               Text('Quantity: ${item.product.formattedQuantity}'),
             const SizedBox(height: 8),
-            Text('Price: ? ${item.unitPrice.toStringAsFixed(2)}'),
+            Text('Price: ₹ ${item.unitPrice.toStringAsFixed(2)}'),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -236,7 +236,7 @@ class _CartItemCard extends StatelessWidget {
                   ],
                 ),
                 Text(
-                  'Subtotal: ? ${item.totalPrice.toStringAsFixed(2)}',
+                  'Subtotal: ₹ ${item.totalPrice.toStringAsFixed(2)}',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
@@ -280,7 +280,7 @@ class _CartSummary extends StatelessWidget {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           Text(
-            'Grand total: ? ${totalAmount.toStringAsFixed(2)}',
+            'Grand total: ₹ ${totalAmount.toStringAsFixed(2)}',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),

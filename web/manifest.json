@@ -1,6 +1,6 @@
 {
-    "name": "zepto",
-    "short_name": "zepto",
+    "name": "Quick Basket",
+    "short_name": "Quick Basket",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
